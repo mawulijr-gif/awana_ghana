@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#103f36">
+  <title>Administration | Awana Clubs Ghana</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --admin-green: #103f36;
+      --admin-green-deep: #0b3029;
+      --admin-green-bright: #1b6858;
+      --admin-yellow: #ffc928;
+      --admin-ink: #1b302c;
+      --admin-muted: #788984;
+      --admin-line: #e8eeeb;
+      --admin-bg: #f5f7f5;
+      --admin-white: #fff;
+      font-family: "DM Sans", sans-serif;
+      color: var(--admin-ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--admin-bg); }
+    button, input, select { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    .admin-layout { min-height: 100vh; display: grid; grid-template-columns: 252px minmax(0, 1fr); }
+    .admin-sidebar {
+      min-height: 100vh; padding: 28px 18px 20px; display: flex; flex-direction: column;
+      background: var(--admin-green-deep); color: #d6e5e0;
+    }
+    .admin-brand { display: flex; align-items: center; min-height: 68px; padding: 0 12px 24px; border-bottom: 1px solid #ffffff1c; }
+    .admin-brand img { width: 155px; height: auto; filter: drop-shadow(0 1px 1px #0005); }
+    .sidebar-label { padding: 28px 12px 10px; color: #86a79c; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+    .sidebar-nav { display: grid; gap: 5px; }
+    .sidebar-link { min-height: 46px; padding: 0 13px; display: flex; align-items: center; gap: 12px; border-radius: 7px; color: #bfd0ca; font-size: 13px; font-weight: 600; transition: background .2s, color .2s; }
+    .sidebar-link:hover { background: #ffffff10; color: white; }
+    .sidebar-link.active { background: #ffffff16; color: white; box-shadow: inset 3px 0 var(--admin-yellow); }
+    .side-icon { width: 20px; color: #a9c2b9; text-align: center; font-size: 15px; }
+    .side-soon { margin-left: auto; padding: 3px 6px; border-radius: 20px; background: #ffffff12; color: #9ab2a9; font-size: 9px; text-transform: uppercase; }
+    .sidebar-bottom { margin-top: auto; padding-top: 20px; border-top: 1px solid #ffffff1c; }
+    .sidebar-user { display: flex; align-items: center; gap: 11px; padding: 14px 9px 18px; }
+    .user-avatar { width: 36px; height: 36px; flex: 0 0 36px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-yellow); color: var(--admin-green-deep); font-weight: 800; }
+    .sidebar-user strong { display: block; color: white; font-size: 12px; }
+    .sidebar-user small { display: block; margin-top: 3px; color: #9bb3aa; font-size: 10px; }
+    .sidebar-logout { width: 100%; padding: 11px 12px; border: 0; border-radius: 6px; background: transparent; color: #c1d2cc; text-align: left; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .sidebar-logout:hover { background: #ffffff10; color: white; }
+    .admin-main { min-width: 0; padding: 0 42px 44px; }
+    .admin-topbar { height: 78px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--admin-line); }
+    .breadcrumb { color: var(--admin-muted); font-size: 12px; }
+    .breadcrumb strong { color: var(--admin-ink); font-weight: 700; }
+    .top-actions { display: flex; align-items: center; gap: 18px; }
+    .top-date { color: var(--admin-muted); font-size: 12px; }
+    .view-site { padding: 9px 13px; border: 1px solid #dfe7e3; border-radius: 6px; background: white; font-size: 11px; font-weight: 700; }
+    .view-site:hover { border-color: var(--admin-green-bright); color: var(--admin-green-bright); }
+    .dashboard-content { max-width: 1440px; margin: auto; }
+    .welcome-row { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 34px 0 25px; }
+    .welcome-kicker { margin: 0 0 8px; color: var(--admin-green-bright); font-size: 10px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    .welcome-row h1 { margin: 0; font: 800 clamp(25px, 3vw, 34px)/1.2 "Manrope", sans-serif; letter-spacing: -1.2px; }
+    .welcome-row h1 span { color: var(--admin-green-bright); }
+    .welcome-copy { margin: 8px 0 0; color: var(--admin-muted); font-size: 13px; }
+    .date-chip { padding: 10px 13px; border: 1px solid var(--admin-line); border-radius: 7px; background: #fff; color: #65756f; font-size: 11px; white-space: nowrap; }
+    .error-banner { display: none; margin-bottom: 18px; padding: 12px 15px; border: 1px solid #f1c5bd; border-radius: 7px; background: #fff4f1; color: #9d3327; font-size: 12px; }
+    .error-banner.visible { display: block; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 15px; }
+    .stat-card { min-height: 135px; position: relative; overflow: hidden; padding: 19px; border: 1px solid var(--admin-line); border-radius: 9px; background: white; box-shadow: 0 3px 12px #16392f05; }
+    .stat-card:after { content: ""; position: absolute; width: 92px; height: 92px; right: -24px; bottom: -34px; border: 15px solid #1b68580b; border-radius: 50%; }
+    .stat-head { display: flex; align-items: center; justify-content: space-between; }
+    .stat-label { color: #768780; font-size: 11px; font-weight: 700; }
+    .stat-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; background: #edf5f1; color: var(--admin-green-bright); font-size: 15px; }
+    .stat-card:nth-child(2) .stat-icon { background: #fff7dd; color: #9b7500; }
+    .stat-card:nth-child(3) .stat-icon { background: #edf1fb; color: #5169a1; }
+    .stat-card:nth-child(4) .stat-icon { background: #f7eff8; color: #875590; }
+    .stat-card strong { display: block; margin-top: 14px; font: 800 29px/1 "Manrope",sans-serif; letter-spacing: -.5px; }
+    .stat-note { display: block; margin-top: 7px; color: #9aa8a3; font-size: 10px; }
+    .content-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(240px, .8fr); gap: 18px; margin-top: 22px; align-items: start; }
+    .panel { border: 1px solid var(--admin-line); border-radius: 9px; background: white; box-shadow: 0 3px 12px #16392f05; }
+    .panel-header { min-height: 68px; padding: 17px 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 1px solid #edf1ef; }
+    .panel-header h2 { margin: 0; font: 800 14px "Manrope",sans-serif; }
+    .panel-header p { margin: 5px 0 0; color: var(--admin-muted); font-size: 10px; }
+    .panel-link { border: 0; background: transparent; color: var(--admin-green-bright); font-size: 11px; font-weight: 800; cursor: pointer; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 12px 16px; background: #fafcfb; color: #899791; font-size: 9px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 13px 16px; border-top: 1px solid #f0f3f1; color: #5c6e67; font-size: 11px; white-space: nowrap; }
+    .contact-person { display: flex; align-items: center; gap: 9px; }
+    .contact-initial { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 50%; background: #edf5f1; color: var(--admin-green-bright); font-size: 10px; font-weight: 800; }
+    .contact-person strong { display: block; max-width: 145px; overflow: hidden; color: var(--admin-ink); font-size: 11px; text-overflow: ellipsis; }
+    .contact-person small { display: block; max-width: 155px; margin-top: 3px; overflow: hidden; color: #99a59f; font-size: 9px; text-overflow: ellipsis; }
+    .status-select { min-width: 100px; padding: 6px 22px 6px 8px; border: 1px solid #e3eae6; border-radius: 20px; background: #f9fbfa; color: #52635c; font-size: 10px; outline: none; }
+    .status-select:focus { border-color: var(--admin-green-bright); }
+    .empty-state { padding: 30px 16px; color: var(--admin-muted); text-align: center; font-size: 12px; }
+    .side-panel-content { padding: 5px 18px 18px; }
+    .activity-item { display: flex; gap: 12px; padding: 15px 0; border-bottom: 1px solid #eff3f1; }
+    .activity-item:last-child { border-bottom: 0; }
+    .activity-dot { width: 8px; height: 8px; flex: 0 0 8px; margin-top: 4px; border-radius: 50%; background: var(--admin-yellow); box-shadow: 0 0 0 4px #fff7dd; }
+    .activity-item strong { display: block; color: #364942; font-size: 11px; }
+    .activity-item p { margin: 5px 0 0; color: #87958f; font-size: 10px; line-height: 1.5; }
+    .help-card { margin-top: 18px; padding: 18px; border-radius: 9px; background: linear-gradient(135deg, var(--admin-green), #1b6858); color: white; }
+    .help-card .help-mark { width: 30px; height: 30px; display: grid; place-items: center; margin-bottom: 14px; border-radius: 8px; background: #ffffff1c; color: var(--admin-yellow); font-weight: 800; }
+    .help-card h3 { margin-bottom: 7px; font: 700 13px "Manrope",sans-serif; }
+    .help-card p { margin-bottom: 15px; color: #d0e0da; font-size: 10px; line-height: 1.6; }
+    .help-card a { display: inline-flex; gap: 10px; color: var(--admin-yellow); font-size: 10px; font-weight: 800; }
+    .login-screen { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .95fr); background: white; }
+    .login-showcase { min-height: 100vh; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; padding: clamp(30px, 6vw, 76px); background: var(--admin-green); color: white; }
+    .login-showcase:before, .login-showcase:after { content: ""; position: absolute; border: 1px solid #ffffff20; border-radius: 50%; pointer-events: none; }
+    .login-showcase:before { width: 550px; height: 550px; right: -180px; top: 12%; }
+    .login-showcase:after { width: 360px; height: 360px; right: -80px; top: 25%; }
+    .login-showcase img { position: relative; z-index: 1; width: 185px; }
+    .login-pitch { position: relative; z-index: 1; max-width: 570px; padding: 60px 0; }
+    .login-pitch .welcome-kicker { color: var(--admin-yellow); }
+    .login-pitch h1 { margin: 0 0 18px; font: 800 clamp(38px, 5vw, 62px)/1.06 "Manrope",sans-serif; letter-spacing: -2px; }
+    .login-pitch h1 em { color: var(--admin-yellow); font-style: normal; }
+    .login-pitch p { max-width: 420px; color: #d4e4df; font-size: 15px; line-height: 1.8; }
+    .login-footnote { position: relative; z-index: 1; color: #b6ccc4; font-size: 10px; }
+    .login-form-side { display: grid; place-items: center; padding: 35px; }
+    .login-card { width: min(390px, 100%); }
+    .login-card .mobile-logo { display: none; width: 150px; margin-bottom: 36px; }
+    .login-card h2 { margin: 0 0 9px; font: 800 27px "Manrope",sans-serif; letter-spacing: -.6px; }
+    .login-subtitle { margin: 0 0 28px; color: var(--admin-muted); font-size: 12px; line-height: 1.6; }
+    .login-card label { display: block; margin: 17px 0; color: #42564e; font-size: 11px; font-weight: 800; }
+    .login-card input { width: 100%; height: 47px; margin-top: 8px; padding: 0 13px; border: 1px solid #dce5e0; border-radius: 6px; background: #fcfdfc; color: var(--admin-ink); outline: none; }
+    .login-card input:focus { border-color: var(--admin-green-bright); box-shadow: 0 0 0 3px #1b685812; }
+    .login-submit { width: 100%; height: 48px; margin-top: 7px; border: 0; border-radius: 6px; background: var(--admin-green); color: white; cursor: pointer; font-size: 12px; font-weight: 800; transition: background .2s, transform .2s; }
+    .login-submit:hover { transform: translateY(-1px); background: var(--admin-green-bright); }
+    .login-error { min-height: 18px; margin: 12px 0 0; color: #ac3e2d; font-size: 11px; }
+    .login-security { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--admin-line); color: #87958f; font-size: 10px; line-height: 1.6; }
+    button.sidebar-link { width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; }
+    .cms-section { padding-top: 24px; }
+    .cms-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+    .cms-heading h2 { margin: 0; font: 800 24px "Manrope",sans-serif; letter-spacing: -.5px; }
+    .cms-heading p { margin: 7px 0 0; color: var(--admin-muted); font-size: 12px; }
+    .cms-primary, .cms-secondary, .cms-danger { min-height: 38px; padding: 0 14px; border: 0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 800; }
+    .cms-primary { background: var(--admin-green); color: white; }
+    .cms-primary:hover { background: var(--admin-green-bright); }
+    .cms-secondary { border: 1px solid var(--admin-line); background: white; color: var(--admin-ink); }
+    .cms-danger { background: #fff0ed; color: #a63e2e; }
+    .cms-table { width: 100%; }
+    .cms-row-title { display: block; color: var(--admin-ink); font-weight: 800; }
+    .cms-row-meta { display: block; margin-top: 4px; color: #96a39d; font-size: 9px; }
+    .registration-photo-list { display: flex; gap: 6px; }
+    .registration-photo-list img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; }
+    .cms-actions { display: flex; justify-content: end; gap: 7px; }
+    .cms-actions button { padding: 6px 9px; border: 1px solid var(--admin-line); border-radius: 5px; background: white; color: var(--admin-green-bright); cursor: pointer; font-size: 10px; font-weight: 800; }
+    .cms-actions button.delete { color: #ac4434; }
+    .cms-status { display: inline-block; padding: 5px 8px; border-radius: 20px; background: #edf5f1; color: var(--admin-green-bright); font-size: 9px; font-weight: 800; }
+    .cms-status.draft { background: #fff7dd; color: #9b7500; }
+    .cms-form-panel { max-width: 900px; margin: 22px auto; padding: 24px; }
+    .cms-form-panel h3 { margin: 0 0 6px; font: 800 18px "Manrope",sans-serif; }
+    .cms-form-panel>p { margin: 0 0 20px; color: var(--admin-muted); font-size: 11px; }
+    .cms-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .cms-field { display: flex; flex-direction: column; gap: 7px; color: #52635c; font-size: 10px; font-weight: 800; }
+    .cms-field.full { grid-column: 1/-1; }
+    .cms-field input, .cms-field textarea, .cms-field select { width: 100%; min-height: 40px; padding: 10px 11px; border: 1px solid #dfe7e3; border-radius: 5px; background: #fcfdfc; color: var(--admin-ink); font-size: 11px; outline: none; }
+    .cms-field textarea { min-height: 100px; resize: vertical; line-height: 1.55; }
+    .cms-field input:focus, .cms-field textarea:focus { border-color: var(--admin-green-bright); box-shadow: 0 0 0 3px #1b685810; }
+    .cms-image-tools { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+    .cms-image-tools input[type=file] { max-width: 250px; font-size: 10px; }
+    .cms-preview { width: 70px; height: 55px; object-fit: cover; border: 1px solid var(--admin-line); border-radius: 5px; }
+    .cms-form-actions { display: flex; align-items: center; gap: 9px; margin-top: 18px; }
+    .cms-inline-message { color: var(--admin-green-bright); font-size: 10px; font-weight: 700; }
+    .cms-settings-group { margin: 18px 0; padding: 20px; }
+    .cms-settings-group h3 { margin: 0 0 16px; font: 800 14px "Manrope",sans-serif; }
+    .cms-media-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(170px,1fr)); gap: 14px; padding: 18px; }
+    .cms-media-card { overflow: hidden; border: 1px solid var(--admin-line); border-radius: 7px; }
+    .cms-media-card img { width: 100%; height: 125px; object-fit: cover; background: #eef3f1; }
+    .cms-media-card div { padding: 9px; }
+    .cms-media-card p { margin: 0 0 8px; overflow: hidden; color: var(--admin-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .cms-media-card button { margin-right: 5px; padding: 6px 8px; border: 1px solid var(--admin-line); border-radius: 4px; background: white; color: var(--admin-green-bright); cursor: pointer; font-size: 9px; font-weight: 800; }
+    .cms-media-card button:last-child { color: #a63e2e; }
+    .cms-upload-panel { margin-bottom: 16px; padding: 18px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+    .cms-upload-panel strong { font-size: 12px; }
+    .cms-upload-panel p { margin: 5px 0 0; color: var(--admin-muted); font-size: 10px; }
+    .cms-upload-panel input { max-width: 250px; font-size: 10px; }
+    .cms-check { display: flex; align-items: center; gap: 8px; color: #52635c; font-size: 11px; }
+    .cms-check input { accent-color: var(--admin-green-bright); }
+    .page-feature-image { width: min(100%, 760px); max-height: 430px; margin: 22px 0; object-fit: cover; border-radius: 7px; }
+    @media (max-width: 1100px) {
+      .admin-main { padding: 0 24px 35px; }
+      .content-grid { grid-template-columns: minmax(0, 1.5fr) minmax(220px, .8fr); }
+      .stats-grid { gap: 10px; }
+      .stat-card { padding: 15px; }
+    }
+    @media (max-width: 850px) {
+      .admin-layout { grid-template-columns: 76px minmax(0, 1fr); }
+      .admin-sidebar { padding: 20px 10px; align-items: center; }
+      .admin-brand { width: 100%; justify-content: center; padding: 0 0 20px; }
+      .admin-brand img { width: 53px; object-fit: cover; object-position: left; }
+      .sidebar-label, .sidebar-link span:not(.side-icon), .side-soon, .sidebar-user>div:not(.user-avatar) { display: none; }
+      .sidebar-nav { width: 100%; margin-top: 20px; }
+      .sidebar-link { justify-content: center; padding: 0; }
+      .side-icon { width: auto; font-size: 18px; }
+      .sidebar-bottom { width: 100%; text-align: center; }
+      .sidebar-user { justify-content: center; padding: 14px 0; }
+      .sidebar-logout { text-align: center; font-size: 10px; }
+      .content-grid { grid-template-columns: 1fr; }
+      .activity-panel { display: none; }
+    }
+    @media (max-width: 600px) {
+      .admin-layout { display: block; }
+      .admin-sidebar { min-height: 0; height: auto; padding: 0 13px; flex-direction: row; justify-content: space-between; }
+      .admin-brand { width: auto; min-height: 60px; padding: 0; border: 0; }
+      .admin-brand img { width: 115px; object-fit: contain; object-position: center; }
+      .sidebar-label, .sidebar-link span:not(.side-icon), .side-soon, .sidebar-user, .sidebar-logout { display: none; }
+      .sidebar-nav { width: auto; display: flex; gap: 3px; margin: 0; }
+      .sidebar-nav { max-width: calc(100vw - 145px); overflow-x: auto; }
+      .sidebar-link { width: 38px; min-height: 38px; }
+      .admin-main { padding: 0 14px 30px; }
+      .admin-topbar { height: 55px; }
+      .top-date { display: none; }
+      .welcome-row { padding: 25px 0 20px; }
+      .date-chip { display: none; }
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 9px; }
+      .stat-card { min-height: 120px; padding: 13px; }
+      .stat-card strong { font-size: 25px; }
+      .stat-label { font-size: 10px; }
+      .panel-header { padding: 15px; }
+      th, td { padding: 11px 12px; }
+      .cms-heading { align-items: start; flex-direction: column; }
+      .cms-form-grid { grid-template-columns: 1fr; }
+      .cms-field.full { grid-column: auto; }
+      .cms-form-panel { padding: 16px; }
+      .cms-upload-panel { align-items: start; flex-direction: column; }
+      .login-screen { display: block; }
+      .login-showcase { display: none; }
+      .login-form-side { min-height: 100vh; padding: 25px; }
+      .login-card .mobile-logo { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <main id="adminApp" aria-live="polite"></main>
+  <script>
+    const app = document.getElementById("adminApp");
+    const statuses = ["New", "In Progress", "Responded", "Closed"];
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+
+    async function request(url, options = {}) {
+      const response = await fetch(url, options);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "The request could not be completed.");
+      return result;
+    }
+
+    function setError(message) {
+      const banner = document.querySelector(".error-banner");
+      if (!banner) return;
+      banner.textContent = message;
+      banner.classList.add("visible");
+    }
+
+    async function session() {
+      const result = await request("/api/session");
+      return result.user;
+    }
+
+    async function login(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const error = form.querySelector(".login-error");
+      const button = form.querySelector("button");
+      error.textContent = "";
+      button.disabled = true;
+      button.textContent = "Signing in…";
+      try {
+        await request("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.fromEntries(new FormData(form)))
+        });
+        await render();
+      } catch (reason) {
+        error.textContent = reason.message;
+      } finally {
+        if (button.isConnected) {
+          button.disabled = false;
+          button.textContent = "Sign in to dashboard";
+        }
+      }
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        await request(`/api/admin/enquiries/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status })
+        });
+        await render();
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function logout() {
+      try {
+        await request("/api/logout", { method: "POST" });
+        await render();
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    function loginView() {
+      app.innerHTML = `
+        <div class="login-screen">
+          <section class="login-showcase">
+            <a href="/"><img src="/logo.png" alt="Awana Clubs Ghana"></a>
+            <div class="login-pitch">
+              <p class="welcome-kicker">Ministry management</p>
+              <h1>Good work deserves <em>great support.</em></h1>
+              <p>Welcome to your Awana Clubs Ghana workspace. Keep enquiries moving and stay connected with your ministry community.</p>
+            </div>
+            <span class="login-footnote">Awana Clubs Ghana · Helping every child grow in faith</span>
+          </section>
+          <section class="login-form-side">
+            <div class="login-card">
+              <a href="/"><img class="mobile-logo" src="/logo.png" alt="Awana Clubs Ghana"></a>
+              <h2>Welcome back</h2>
+              <p class="login-subtitle">Sign in with your administrator account to continue.</p>
+              <form onsubmit="login(event)">
+                <label>Email address<input name="email" type="email" autocomplete="username" placeholder="name@organization.org" required></label>
+                <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
+                <button class="login-submit" type="submit">Sign in to dashboard</button>
+                <p class="login-error" role="alert"></p>
+              </form>
+              <p class="login-security">This area is for authorised Awana Clubs Ghana administrators only.</p>
+            </div>
+          </section>
+        </div>`;
+    }
+
+    function formatDate(value) {
+      if (!value) return "—";
+      const date = new Date(`${value.replace(" ", "T")}Z`);
+      return Number.isNaN(date.getTime()) ? escapeHtml(value) : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+
+    function enquiryRows(enquiries) {
+      if (!enquiries.length) return '<tr><td class="empty-state" colspan="5">No enquiries yet. New messages will appear here.</td></tr>';
+      return enquiries.map(item => {
+        const name = escapeHtml(item.name || "Website visitor");
+        const email = escapeHtml(item.email || "");
+        const initial = escapeHtml((item.name || "A").trim().charAt(0).toUpperCase());
+        const subject = escapeHtml(item.subject || "General enquiry");
+        const status = statuses.includes(item.status) ? item.status : "New";
+        const options = statuses.map(value => `<option value="${value}" ${status === value ? "selected" : ""}>${value}</option>`).join("");
+        return `<tr>
+          <td><div class="contact-person"><span class="contact-initial">${initial}</span><div><strong>${name}</strong><small>${email}</small></div></div></td>
+          <td>${subject}</td>
+          <td>${formatDate(item.created_at)}</td>
+          <td><select class="status-select" aria-label="Update status for ${name}" onchange="updateStatus(${Number(item.id)}, this.value)">${options}</select></td>
+          <td><div class="cms-actions"><button type="button" class="delete" onclick="deleteEnquiry(${Number(item.id)})">Delete</button></div></td>
+        </tr>`;
+      }).join("");
+    }
+
+    function dashboardView(user, data) {
+      const safeName = escapeHtml(user.name || "Administrator");
+      const initial = escapeHtml((user.name || "A").trim().charAt(0).toUpperCase());
+      const date = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+      app.innerHTML = `
+        <div class="admin-layout">
+          <aside class="admin-sidebar">
+            <a class="admin-brand" href="/" aria-label="Awana Clubs Ghana home"><img src="/logo.png" alt="Awana Clubs Ghana"></a>
+            <div class="sidebar-label">Workspace</div>
+            <nav class="sidebar-nav" aria-label="Administration navigation">
+              <button class="sidebar-link active" type="button" onclick="showSection('overview','Overview')"><span class="side-icon">⌂</span><span>Overview</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('settings','Home &amp; site settings')"><span class="side-icon">✎</span><span>Home &amp; settings</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('pages','Pages')"><span class="side-icon">▤</span><span>Pages</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('programmes','Programmes')"><span class="side-icon">✦</span><span>Programmes</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('events','Events')"><span class="side-icon">▦</span><span>Events</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('faqs','FAQs')"><span class="side-icon">?</span><span>FAQs</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('resources','Resources')"><span class="side-icon">▧</span><span>Resources</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('media','Media library')"><span class="side-icon">▣</span><span>Media library</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('products','Products')"><span class="side-icon">□</span><span>Products</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('churches','Church directory')"><span class="side-icon">⌖</span><span>Church directory</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('announcements','Announcements')"><span class="side-icon">◉</span><span>Announcements</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('registrations','Registrations')"><span class="side-icon">♙</span><span>Registrations</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('enquiries','Enquiries')"><span class="side-icon">✉</span><span>Enquiries</span></button>
+              <button class="sidebar-link" type="button" onclick="showSection('subscribers','Subscribers')"><span class="side-icon">♡</span><span>Subscribers</span></button>
+            </nav>
+            <div class="sidebar-bottom">
+              <a class="sidebar-link" href="/"><span class="side-icon">↗</span><span>View website</span></a>
+              <div class="sidebar-user"><span class="user-avatar">${initial}</span><div><strong>${safeName}</strong><small>Administrator</small></div></div>
+              <button class="sidebar-logout" type="button" onclick="logout()">↪ &nbsp; Sign out</button>
+            </div>
+          </aside>
+          <section class="admin-main">
+            <header class="admin-topbar">
+              <div class="breadcrumb">Workspace <span> / </span> <strong id="activeSectionTitle">Overview</strong></div>
+              <div class="top-actions"><span class="top-date">${escapeHtml(date)}</span><a class="view-site" href="/">View website ↗</a></div>
+            </header>
+            <div class="dashboard-content">
+              <div class="welcome-row">
+                <div><p class="welcome-kicker">Your ministry at a glance</p><h1>Welcome back, <span>${safeName}</span></h1><p class="welcome-copy">Here’s what’s happening across your website today.</p></div>
+                <span class="date-chip">✦ &nbsp; ${escapeHtml(date)}</span>
+              </div>
+              <div class="error-banner" role="alert"></div>
+              <div id="adminSection">
+              <section class="stats-grid" aria-label="Website overview">
+                <article class="stat-card"><div class="stat-head"><span class="stat-label">Total enquiries</span><span class="stat-icon">✉</span></div><strong>${Number(data.enquiries) || 0}</strong><small class="stat-note">Messages received</small></article>
+                <article class="stat-card"><div class="stat-head"><span class="stat-label">Child registrations</span><span class="stat-icon">♙</span></div><strong>${Number(data.registrations) || 0}</strong><small class="stat-note">Submitted by families</small></article>
+                <article class="stat-card"><div class="stat-head"><span class="stat-label">Subscribers</span><span class="stat-icon">♡</span></div><strong>${Number(data.subscribers) || 0}</strong><small class="stat-note">Family updates list</small></article>
+                <article class="stat-card"><div class="stat-head"><span class="stat-label">Upcoming events</span><span class="stat-icon">▦</span></div><strong>${Number(data.events) || 0}</strong><small class="stat-note">Published on your site</small></article>
+                <article class="stat-card"><div class="stat-head"><span class="stat-label">FAQs</span><span class="stat-icon">?</span></div><strong>${Number(data.faqs) || 0}</strong><small class="stat-note">Support answers available</small></article>
+              </section>
+              <div class="content-grid">
+                <section class="panel" id="enquiries">
+                  <header class="panel-header"><div><h2>Recent enquiries</h2><p>Keep up with the latest messages from your community.</p></div><button class="panel-link" type="button" onclick="document.getElementById('enquiries').scrollIntoView({behavior:'smooth'})">View all →</button></header>
+                  <div class="table-wrap"><table><thead><tr><th>Contact</th><th>Subject</th><th>Received</th><th>Status</th><th></th></tr></thead><tbody>${enquiryRows(data.recent || [])}</tbody></table></div>
+                </section>
+                <aside class="activity-panel">
+                  <section class="panel">
+                    <header class="panel-header"><div><h2>Quick updates</h2><p>A few helpful reminders</p></div></header>
+                    <div class="side-panel-content">
+                      <div class="activity-item"><span class="activity-dot"></span><div><strong>Stay connected</strong><p>Respond to church and family enquiries as they arrive.</p></div></div>
+                      <div class="activity-item"><span class="activity-dot"></span><div><strong>Keep content fresh</strong><p>Review programme and event information before sharing.</p></div></div>
+                      <div class="activity-item"><span class="activity-dot"></span><div><strong>Protect your account</strong><p>Sign out when you finish using this dashboard.</p></div></div>
+                    </div>
+                  </section>
+                  <div class="help-card"><span class="help-mark">?</span><h3>Need a hand?</h3><p>Our team is here to help you with your Awana ministry.</p><a href="/contact">Contact the team <span>→</span></a></div>
+                </aside>
+              </div>
+            </div>
+          </section>
+        </div>`;
+    }
+
+    const cmsTypes = {
+      pages: "Pages",
+      programmes: "Programmes",
+      events: "Events",
+      faqs: "FAQs",
+      resources: "Resources",
+      products: "Products",
+      churches: "Church directory",
+      announcements: "Announcements"
+    };
+    const cmsSingular = {
+      pages: "page", programmes: "programme", events: "event", faqs: "FAQ",
+      resources: "resource", products: "product", churches: "church", announcements: "announcement"
+    };
+    const settingLabels = {
+      "brand.tagline": "Top-bar tagline",
+      "brand.logo": "Website logo",
+      "nav.about.label": "About navigation label",
+      "nav.about.href": "About navigation link",
+      "nav.programmes.label": "Programmes navigation label",
+      "nav.programmes.href": "Programmes navigation link",
+      "nav.how.label": "How it works navigation label",
+      "nav.how.href": "How it works navigation link",
+      "nav.leaders.label": "Leaders navigation label",
+      "nav.leaders.href": "Leaders navigation link",
+      "nav.families.label": "Families navigation label",
+      "nav.families.href": "Families navigation link",
+      "nav.resources.label": "Resources navigation label",
+      "nav.resources.href": "Resources navigation link",
+      "nav.events.label": "Events navigation label",
+      "nav.events.href": "Events navigation link",
+      "nav.cta.label": "Main call-to-action label",
+      "nav.cta.href": "Main call-to-action link",
+      "contact.email": "Contact email",
+      "contact.location": "Contact location",
+      "home.hero.kicker": "Hero eyebrow",
+      "home.hero.title": "Hero heading (use | to colour the ending)",
+      "home.hero.description": "Hero description",
+      "home.hero.primary_label": "Primary button label",
+      "home.hero.primary_href": "Primary button link",
+      "home.hero.secondary_label": "Secondary button label",
+      "home.hero.secondary_href": "Secondary button link",
+      "home.hero.image": "Hero image",
+      "home.impact.value": "Hero statistic",
+      "home.impact.label": "Hero statistic label",
+      "home.about.kicker": "About eyebrow",
+      "home.about.title": "About heading (use | to colour the ending)",
+      "home.about.description": "About description",
+      "home.about.image": "About image",
+      "home.about.value1.title": "About value 1 title",
+      "home.about.value1.body": "About value 1 detail",
+      "home.about.value2.title": "About value 2 title",
+      "home.about.value2.body": "About value 2 detail",
+      "home.about.value3.title": "About value 3 title",
+      "home.about.value3.body": "About value 3 detail",
+      "home.programmes.kicker": "Programmes eyebrow",
+      "home.programmes.title": "Programmes heading (use | to colour the ending)",
+      "home.programmes.description": "Programmes description",
+      "home.leaders.kicker": "Leaders eyebrow",
+      "home.leaders.title": "Leaders heading (use | to colour the ending)",
+      "home.leaders.description": "Leaders description",
+      "home.leaders.image": "Leaders image",
+      "home.leaders.quote": "Leaders quote",
+      "home.leaders.point1": "Leader support point 1",
+      "home.leaders.point2": "Leader support point 2",
+      "home.leaders.point3": "Leader support point 3",
+      "home.resources.kicker": "Resources eyebrow",
+      "home.resources.title": "Resources heading (use | to colour the ending)",
+      "home.events.kicker": "Events eyebrow",
+      "home.events.title": "Events heading (use | to colour the ending)",
+      "home.started.kicker": "Getting started eyebrow",
+      "home.started.title": "Getting started heading (use | to colour the ending)",
+      "home.started.description": "Getting started description",
+      "home.families.kicker": "Families eyebrow",
+      "home.families.title": "Families heading (use | to colour the ending)",
+      "home.families.description": "Families description",
+      "home.families.image": "Families image",
+      "home.contact.kicker": "Contact eyebrow",
+      "home.contact.title": "Contact heading (use | to colour the ending)",
+      "footer.description": "Footer description",
+      "social.facebook": "Facebook link",
+      "social.instagram": "Instagram link",
+      "social.youtube": "YouTube link"
+    };
+
+    function sectionHeading(title, description, button = "") {
+      return `<div class="cms-heading"><div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(description)}</p></div>${button}</div>`;
+    }
+
+    async function showSection(key, title) {
+      document.querySelectorAll(".sidebar-nav .sidebar-link").forEach(button => {
+        button.classList.toggle("active", button.getAttribute("onclick")?.includes(`'${key}'`));
+      });
+      document.getElementById("activeSectionTitle").textContent = title;
+      if (key === "overview") return render();
+      const target = document.getElementById("adminSection");
+      target.innerHTML = '<div class="empty-state">Loading content…</div>';
+      try {
+        if (key === "settings") await renderSettings(target);
+        else if (key === "media") await renderMedia(target);
+        else if (key === "registrations") await renderRegistrations(target);
+        else if (key === "enquiries") await renderAllEnquiries(target);
+        else if (key === "subscribers") await renderSubscribers(target);
+        else await renderContentManager(target, key);
+      } catch (error) {
+        target.innerHTML = `<section class="panel empty-state">${escapeHtml(error.message)}</section>`;
+      }
+    }
+
+    async function renderContentManager(target, type) {
+      if (!cmsTypes[type]) throw new Error("Unknown content section.");
+      const items = await request(`/api/admin/content?type=${encodeURIComponent(type)}`);
+      const rows = items.map(item => `<tr>
+        <td><span class="cms-row-title">${escapeHtml(item.title)}</span><span class="cms-row-meta">${type === "programmes" ? "/programmes/" : "/"}${escapeHtml(item.slug)}</span></td>
+        <td>${escapeHtml(item.category || item.event_date || "—")}</td>
+        <td>${escapeHtml(item.updated_at || "—")}</td>
+        <td><span class="cms-status ${item.published ? "" : "draft"}">${item.published ? "Published" : "Draft"}</span></td>
+        <td><div class="cms-actions"><button type="button" onclick="openItemEditor('${type}',${Number(item.id)})">Edit</button><button type="button" class="delete" onclick="deleteItem(${Number(item.id)},'${type}')">Delete</button></div></td>
+      </tr>`).join("");
+      target.innerHTML = `<section class="cms-section">
+        ${sectionHeading(cmsTypes[type], `Create, update, publish or remove ${cmsTypes[type].toLowerCase()} on the website.`, `<button class="cms-primary" type="button" onclick="openItemEditor('${type}')">＋ New ${cmsSingular[type]}</button>`)}
+        <div class="panel"><div class="table-wrap"><table class="cms-table"><thead><tr><th>Title / page address</th><th>Category / date</th><th>Last updated</th><th>Visibility</th><th></th></tr></thead><tbody>${rows || '<tr><td class="empty-state" colspan="5">Nothing here yet. Add your first item to publish it.</td></tr>'}</tbody></table></div></div>
+        <div id="cmsEditor"></div>
+      </section>`;
+    }
+
+    async function openItemEditor(type, id) {
+      const host = document.getElementById("cmsEditor");
+      if (!host) return;
+      const items = await request(`/api/admin/content?type=${encodeURIComponent(type)}`);
+      const item = items.find(entry => entry.id === id) || {
+        type, title: "", slug: "", summary: "", body: "", image_url: "", category: "",
+        event_date: "", event_time: "", venue: "", link_url: "", published: 1, sort_order: 0
+      };
+      const eventFields = type === "events" ? `
+        <label class="cms-field">Event date<input name="event_date" type="date" value="${escapeHtml(item.event_date)}"></label>
+        <label class="cms-field">Event time<input name="event_time" value="${escapeHtml(item.event_time)}"></label>
+        <label class="cms-field full">Venue or online location<input name="venue" value="${escapeHtml(item.venue)}"></label>` : "";
+      const resourceFileField = type === "resources" ? `
+        <label class="cms-field full">Upload resource file<span class="cms-image-tools"><input type="file" class="cms-resource-file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"><span class="cms-inline-message">PDF, DOC or DOCX · maximum 20 MB</span></span></label>` : "";
+      host.innerHTML = `<section class="panel cms-form-panel">
+        <h3>${id ? "Edit" : "Create"} ${cmsSingular[type]}</h3>
+        <p>Changes are saved to the site immediately. Use plain text in the content field; separate paragraphs with a blank line.</p>
+        <form id="cmsItemForm" data-item-id="${id || ""}" data-item-type="${type}">
+          <div class="cms-form-grid">
+            <label class="cms-field">Title / question<input name="title" maxlength="200" value="${escapeHtml(item.title)}" required></label>
+            <label class="cms-field">URL slug<input name="slug" value="${escapeHtml(item.slug)}" required pattern="[a-z0-9]+([/-][a-z0-9]+)*"><small>Lowercase letters, numbers, hyphens; pages can use a path like programmes/new-group.</small></label>
+            <label class="cms-field full">Short description / answer<textarea name="summary" maxlength="2000">${escapeHtml(item.summary)}</textarea></label>
+            <label class="cms-field full">Main content<textarea name="body" maxlength="30000">${escapeHtml(item.body)}</textarea></label>
+            <label class="cms-field">Category / age group<input name="category" maxlength="100" value="${escapeHtml(item.category)}"></label>
+            <label class="cms-field">Display order<input name="sort_order" type="number" min="0" value="${Number(item.sort_order) || 0}"></label>
+            ${eventFields}
+            <label class="cms-field full">Image URL
+              <input name="image_url" class="cms-image-url" value="${escapeHtml(item.image_url)}" placeholder="Upload an image or paste an HTTPS image URL">
+              <span class="cms-image-tools"><input type="file" class="cms-image-file" accept="image/png,image/jpeg,image/webp,image/gif"><img class="cms-preview" src="${escapeHtml(item.image_url || "/logo.png")}" alt="Image preview"><span class="cms-inline-message"></span></span>
+            </label>
+            ${resourceFileField}
+            <label class="cms-field full">Resource / registration link<input name="link_url" value="${escapeHtml(item.link_url)}" placeholder="https://… or a site path"></label>
+            <label class="cms-check full"><input name="published" type="checkbox" ${item.published ? "checked" : ""}> Publish this item on the public website</label>
+          </div>
+          <div class="cms-form-actions"><button class="cms-primary" type="submit">Save changes</button><button class="cms-secondary" type="button" onclick="document.getElementById('cmsEditor').replaceChildren()">Cancel</button><span class="cms-inline-message" role="status"></span></div>
+        </form>
+      </section>`;
+      const form = host.querySelector("#cmsItemForm");
+      const slugInput = form.elements.slug;
+      let slugWasEdited = Boolean(item.slug);
+      form.elements.title.addEventListener("input", () => {
+        if (!slugWasEdited) slugInput.value = form.elements.title.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      });
+      slugInput.addEventListener("input", () => { slugWasEdited = true; });
+      const imageInput = form.querySelector(".cms-image-url");
+      const imagePreview = form.querySelector(".cms-preview");
+      imageInput.addEventListener("input", () => { imagePreview.src = imageInput.value || "/logo.png"; });
+      form.querySelector(".cms-image-file").addEventListener("change", async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const message = form.querySelector(".cms-image-tools .cms-inline-message");
+        try {
+          const uploaded = await uploadImage(file);
+          imageInput.value = uploaded.url;
+          imagePreview.src = uploaded.url;
+          message.textContent = "Uploaded";
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      });
+      form.querySelector(".cms-resource-file")?.addEventListener("change", async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const message = event.target.closest(".cms-field").querySelector(".cms-inline-message");
+        try {
+          const uploaded = await uploadResourceFile(file);
+          form.elements.link_url.value = uploaded.url;
+          message.textContent = `Uploaded ${file.name}`;
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      });
+      form.addEventListener("submit", saveCmsItem);
+      host.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function saveCmsItem(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const values = Object.fromEntries(new FormData(form).entries());
+      values.type = form.dataset.itemType;
+      values.published = form.elements.published.checked;
+      values.sort_order = Number(values.sort_order) || 0;
+      const id = form.dataset.itemId;
+      const button = form.querySelector('[type="submit"]');
+      const message = form.querySelector(".cms-form-actions .cms-inline-message");
+      button.disabled = true;
+      message.textContent = "Saving…";
+      try {
+        await request(id ? `/api/admin/content/${id}` : "/api/admin/content", {
+          method: id ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values)
+        });
+        message.textContent = "Saved";
+        await renderContentManager(document.getElementById("adminSection"), values.type);
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        if (button.isConnected) button.disabled = false;
+      }
+    }
+
+    async function deleteItem(id, type) {
+      if (!confirm("Delete this item? This cannot be undone.")) return;
+      try {
+        await request(`/api/admin/content/${id}`, { method: "DELETE" });
+        await renderContentManager(document.getElementById("adminSection"), type);
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function uploadImage(file) {
+      const data = new FormData();
+      data.append("image", file);
+      return request("/api/admin/media", { method: "POST", body: data });
+    }
+
+    async function uploadResourceFile(file) {
+      const data = new FormData();
+      data.append("file", file);
+      return request("/api/admin/files", { method: "POST", body: data });
+    }
+
+    function settingsLabel(key) {
+      return settingLabels[key] || key;
+    }
+
+    function settingField(key, value) {
+      const imageField = key === "brand.logo" || key.endsWith(".image");
+      const longField = !imageField && (key.includes("description") || key.includes("title") || key.includes("tagline") || key.includes("quote"));
+      const input = longField
+        ? `<textarea class="setting-value" name="${escapeHtml(key)}" maxlength="2000">${escapeHtml(value)}</textarea>`
+        : `<input class="setting-value" name="${escapeHtml(key)}" value="${escapeHtml(value)}" ${key === "contact.email" ? 'type="email"' : key.startsWith("social.") ? 'type="url"' : ""}>`;
+      return `<label class="cms-field">${escapeHtml(settingsLabel(key))}${input}${imageField ? `<span class="cms-image-tools"><input type="file" class="setting-image-file" data-setting="${escapeHtml(key)}" accept="image/png,image/jpeg,image/webp,image/gif"><img class="cms-preview" src="${escapeHtml(value || "/logo.png")}" alt="Image preview"><span class="cms-inline-message"></span></span>` : ""}</label>`;
+    }
+
+    async function renderSettings(target) {
+      const settings = await request("/api/admin/settings");
+      const groups = new Map();
+      for (const [key, value] of Object.entries(settings)) {
+        const groupName = key.split(".")[0];
+        if (!groups.has(groupName)) groups.set(groupName, []);
+        groups.get(groupName).push(settingField(key, value));
+      }
+      const labels = { brand: "Brand", nav: "Main navigation", contact: "Contact details", home: "Homepage sections", footer: "Footer", social: "Social media" };
+      target.innerHTML = `<section class="cms-section">
+        ${sectionHeading("Home & site settings", "Edit homepage copy, site branding, contact details and images.", "")}
+        <form id="settingsForm">${Array.from(groups.entries()).map(([group, fields]) => `<section class="panel cms-settings-group"><h3>${escapeHtml(labels[group] || group)}</h3><div class="cms-form-grid">${fields.join("")}</div></section>`).join("")}
+          <button class="cms-primary" type="submit">Save all site settings</button> <span class="cms-inline-message" role="status"></span>
+        </form>
+      </section>`;
+      const form = target.querySelector("#settingsForm");
+      form.querySelectorAll(".setting-image-file").forEach(input => input.addEventListener("change", async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const field = event.target.closest(".cms-field");
+        const message = field.querySelector(".cms-inline-message");
+        try {
+          const uploaded = await uploadImage(file);
+          form.elements.namedItem(input.dataset.setting).value = uploaded.url;
+          field.querySelector(".cms-preview").src = uploaded.url;
+          message.textContent = "Uploaded";
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      }));
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const values = Object.fromEntries(Array.from(form.querySelectorAll(".setting-value")).map(input => [input.name, input.value]));
+        const message = form.querySelector('[role="status"]');
+        try {
+          await request("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+          message.textContent = "Settings saved. Refresh the public site to see the changes.";
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      });
+    }
+
+    async function renderMedia(target) {
+      const [media, files] = await Promise.all([request("/api/admin/media"), request("/api/admin/files")]);
+      const cards = media.map(item => `<article class="cms-media-card">
+        <img src="${escapeHtml(item.url)}" alt="">
+        <div><p title="${escapeHtml(item.filename)}">${escapeHtml(item.filename)}</p>
+          <button type="button" onclick="copyMediaUrl('${escapeHtml(item.url)}')">Copy URL</button>
+          <button type="button" onclick="deleteMedia('${escapeHtml(item.filename)}')">Delete</button>
+        </div></article>`).join("");
+      target.innerHTML = `<section class="cms-section">
+        ${sectionHeading("Media library", "Upload and manage images and resource files used on the public website.", "")}
+        <form id="mediaUploadForm" class="panel cms-upload-panel"><div><strong>Upload image</strong><p>JPG, PNG, GIF or WebP · maximum 5 MB</p></div><div class="cms-image-tools"><input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" required><button class="cms-primary" type="submit">Upload</button></div></form>
+        <div class="panel cms-media-grid">${cards || '<p class="empty-state">No uploaded images yet.</p>'}</div>
+        <section class="panel cms-section"><header class="panel-header"><div><h2>Resource documents</h2><p>PDF, DOC and DOCX uploads · maximum 20 MB</p></div></header><div class="table-wrap"><table><thead><tr><th>File</th><th>Public URL</th><th></th></tr></thead><tbody>${files.map(file => `<tr><td>${escapeHtml(file.filename)}</td><td>${escapeHtml(file.url)}</td><td><div class="cms-actions"><button type="button" class="delete" onclick="deleteResourceFile('${escapeHtml(file.filename)}')">Delete</button></div></td></tr>`).join("") || '<tr><td class="empty-state" colspan="3">No resource documents uploaded yet.</td></tr>'}</tbody></table></div></section>
+        <p class="cms-inline-message" id="mediaMessage" role="status"></p>
+      </section>`;
+      target.querySelector("#mediaUploadForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const message = target.querySelector("#mediaMessage");
+        try {
+          await uploadImage(form.elements.image.files[0]);
+          await renderMedia(target);
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      });
+    }
+
+    async function copyMediaUrl(url) {
+      try {
+        await navigator.clipboard.writeText(new URL(url, location.origin).href);
+      } catch (error) {
+        setError("Could not copy image URL. You can use the media path shown in your browser.");
+      }
+    }
+
+    async function deleteMedia(filename) {
+      if (!confirm("Delete this uploaded image?")) return;
+      try {
+        await request(`/api/admin/media/${encodeURIComponent(filename)}`, { method: "DELETE" });
+        await renderMedia(document.getElementById("adminSection"));
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function deleteResourceFile(filename) {
+      if (!confirm("Delete this uploaded resource file?")) return;
+      try {
+        await request(`/api/admin/files/${encodeURIComponent(filename)}`, { method: "DELETE" });
+        await renderMedia(document.getElementById("adminSection"));
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function renderAllEnquiries(target) {
+      const enquiries = await request("/api/admin/enquiries");
+      target.innerHTML = `<section class="cms-section">
+        ${sectionHeading("Enquiries", "Review messages and update their response status.", "")}
+        <div class="panel"><div class="table-wrap"><table><thead><tr><th>Contact</th><th>Subject</th><th>Received</th><th>Status</th><th></th></tr></thead><tbody>${enquiryRows(enquiries)}</tbody></table></div></div>
+      </section>`;
+    }
+
+    async function renderRegistrations(target) {
+      const registrations = await request("/api/admin/registrations");
+      const rows = registrations.map(item => {
+        const photos = JSON.parse(item.photos || "[]");
+        if (!Array.isArray(photos)) throw new Error("A registration has invalid photo data.");
+        const photoList = photos.map(filename => {
+          if (typeof filename !== "string" || !/^[0-9a-f-]{36}\.(jpg|png|gif|webp)$/i.test(filename)) return "";
+          const url = `/api/admin/registrations/${Number(item.id)}/photos/${encodeURIComponent(filename)}`;
+          return `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Photo of ${escapeHtml(item.child_name)}" loading="lazy"></a>`;
+        }).join("");
+        const identification = typeof item.identification_file === "string" &&
+          /^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/i.test(item.identification_file)
+          ? `<a href="/api/admin/registrations/${Number(item.id)}/identification/${encodeURIComponent(item.identification_file)}" target="_blank" rel="noopener">${escapeHtml(item.identification_type || "View document")}</a>`
+          : "—";
+        return `<tr>
+          <td><span class="cms-row-title">${escapeHtml(item.child_name)}</span><span class="cms-row-meta">Date of birth: ${escapeHtml(item.child_dob)}</span></td>
+          <td>${escapeHtml(item.rank || item.programme || "—")}</td>
+          <td>${escapeHtml(item.club_name || "Not sure yet")}</td>
+          <td><span class="cms-row-title">${escapeHtml(item.guardian_name)}</span><span class="cms-row-meta">${escapeHtml(item.guardian_relationship)}</span></td>
+          <td>${escapeHtml(item.guardian_phone)}${item.guardian_email ? `<span class="cms-row-meta">${escapeHtml(item.guardian_email)}</span>` : ""}</td>
+          <td>${escapeHtml(item.location)}</td>
+          <td><div class="registration-photo-list">${photoList || "—"}</div></td>
+          <td>${identification}</td>
+          <td>${formatDate(item.created_at)}</td>
+          <td><div class="cms-actions"><button class="delete" type="button" onclick="deleteRegistration(${Number(item.id)})">Delete</button></div></td>
+        </tr>`;
+      }).join("");
+      target.innerHTML = `<section class="cms-section">
+        ${sectionHeading("Child registrations", "Review child, rank, club, photo, identification and parent or guardian details submitted through the registration form. Handle these personal details with care.", "")}
+        <div class="panel"><div class="table-wrap"><table><thead><tr><th>Child</th><th>Rank</th><th>Club</th><th>Parent / guardian</th><th>Contact</th><th>Town / region</th><th>Photos</th><th>Identification</th><th>Received</th><th></th></tr></thead><tbody>${rows || '<tr><td class="empty-state" colspan="10">No child registrations yet.</td></tr>'}</tbody></table></div></div>
+      </section>`;
+    }
+
+    async function deleteRegistration(id) {
+      if (!confirm("Delete this child registration and its personal information? This cannot be undone.")) return;
+      try {
+        await request(`/api/admin/registrations/${id}`, { method: "DELETE" });
+        await renderRegistrations(document.getElementById("adminSection"));
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function deleteEnquiry(id) {
+      if (!confirm("Delete this enquiry and its message? This cannot be undone.")) return;
+      try {
+        await request(`/api/admin/enquiries/${id}`, { method: "DELETE" });
+        const title = document.getElementById("activeSectionTitle").textContent;
+        if (title === "Enquiries") await renderAllEnquiries(document.getElementById("adminSection"));
+        else await render();
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function renderSubscribers(target) {
+      const subscribers = await request("/api/admin/subscribers");
+      const rows = subscribers.map(item => `<tr>
+        <td><span class="cms-row-title">${escapeHtml(`${item.first_name || ""} ${item.last_name || ""}`.trim() || "Subscriber")}</span><span class="cms-row-meta">${escapeHtml(item.location || "No location provided")}</span></td>
+        <td>${escapeHtml(item.email)}</td><td>${formatDate(item.created_at)}</td>
+        <td><span class="cms-status">${item.consent ? "Consented" : "No consent"}</span></td>
+        <td><div class="cms-actions"><button class="delete" type="button" onclick="deleteSubscriber(${Number(item.id)})">Delete</button></div></td>
+      </tr>`).join("");
+      target.innerHTML = `<section class="cms-section">
+        ${sectionHeading("Newsletter subscribers", "View consented family updates subscriptions and remove records when requested.", "")}
+        <div class="panel"><div class="table-wrap"><table><thead><tr><th>Subscriber</th><th>Email</th><th>Subscribed</th><th>Consent</th><th></th></tr></thead><tbody>${rows || '<tr><td class="empty-state" colspan="5">No subscribers yet.</td></tr>'}</tbody></table></div></div>
+      </section>`;
+    }
+
+    async function deleteSubscriber(id) {
+      if (!confirm("Remove this subscriber and their personal information?")) return;
+      try {
+        await request(`/api/admin/subscribers/${id}`, { method: "DELETE" });
+        await renderSubscribers(document.getElementById("adminSection"));
+      } catch (error) {
+        setError(error.message);
+      }
+    }
+
+    async function render() {
+      try {
+        const user = await session();
+        if (!user) {
+          loginView();
+          return;
+        }
+        const data = await request("/api/admin/overview");
+        dashboardView(user, data);
+      } catch (error) {
+        app.innerHTML = `<section class="login-form-side"><div class="login-card"><h2>Dashboard unavailable</h2><p class="login-subtitle">${escapeHtml(error.message)}</p><a class="view-site" href="/">Return to website</a></div></section>`;
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>
