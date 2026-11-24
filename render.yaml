@@ -2,6 +2,7 @@ services:
   - type: web
     name: awana-clubs-ghana
     runtime: node
+    plan: free
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /healthz
