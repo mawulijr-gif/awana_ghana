@@ -819,7 +819,12 @@
         const identification = typeof item.identification_file === "string" &&
           /^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/i.test(item.identification_file)
           ? `<a href="/api/admin/registrations/${Number(item.id)}/identification/${encodeURIComponent(item.identification_file)}" target="_blank" rel="noopener">${escapeHtml(item.identification_type || "View document")}</a>`
-          : "—";
+          : "";
+        const identificationNumber = item.identification_type === "Ghana Card" &&
+          typeof item.identification_number === "string" && item.identification_number
+          ? `<span class="cms-row-title">Ghana Card</span><span class="cms-row-meta">${escapeHtml(item.identification_number)}</span>`
+          : "";
+        const identificationDetails = [identificationNumber, identification].filter(Boolean).join("") || "—";
         return `<tr>
           <td><span class="cms-row-title">${escapeHtml(item.child_name)}</span><span class="cms-row-meta">Date of birth: ${escapeHtml(item.child_dob)}</span></td>
           <td>${escapeHtml(item.rank || item.programme || "—")}</td>
@@ -828,7 +833,7 @@
           <td>${escapeHtml(item.guardian_phone)}${item.guardian_email ? `<span class="cms-row-meta">${escapeHtml(item.guardian_email)}</span>` : ""}</td>
           <td>${escapeHtml(item.location)}</td>
           <td><div class="registration-photo-list">${photoList || "—"}</div></td>
-          <td>${identification}</td>
+          <td>${identificationDetails}</td>
           <td>${formatDate(item.created_at)}</td>
           <td><div class="cms-actions"><button class="delete" type="button" onclick="deleteRegistration(${Number(item.id)})">Delete</button></div></td>
         </tr>`;

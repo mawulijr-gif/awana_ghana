@@ -148,6 +148,7 @@ async function submitRegistration(form) {
     form.reset();
     resetPhotoSelection();
     selectedIdentification = null;
+    updateIdentificationFields();
     identificationFeedback.textContent = "";
   } catch (error) {
     message.textContent = error.message;
@@ -158,7 +159,22 @@ async function submitRegistration(form) {
 
 const identificationInput = document.querySelector("#childIdentification");
 const identificationFeedback = document.querySelector("#identificationFeedback");
+const identificationTypeInput = document.querySelector("#childIdentificationType");
+const identificationUpload = document.querySelector("#identificationUpload");
+const identificationNumberField = document.querySelector("#ghanaCardNumberField");
+const identificationNumberInput = document.querySelector("#childIdentificationNumber");
 let selectedIdentification = null;
+
+function updateIdentificationFields() {
+  const type = identificationTypeInput.value;
+  const isGhanaCard = type === "Ghana Card";
+  const requiresDocument = type !== "" && !isGhanaCard;
+  identificationNumberField.hidden = !isGhanaCard;
+  identificationNumberInput.required = isGhanaCard;
+  identificationUpload.hidden = !requiresDocument;
+  identificationInput.required = requiresDocument;
+}
+
 if (identificationInput && identificationFeedback) {
   identificationInput.addEventListener("change", () => {
     const file = identificationInput.files[0] || null;
@@ -178,6 +194,27 @@ if (identificationInput && identificationFeedback) {
     selectedIdentification = file;
     identificationFeedback.textContent = file ? `Selected: ${file.name}` : "";
   });
+}
+
+if (identificationTypeInput && identificationInput && identificationFeedback &&
+    identificationUpload && identificationNumberField && identificationNumberInput) {
+  identificationTypeInput.addEventListener("change", () => {
+    identificationInput.value = "";
+    selectedIdentification = null;
+    identificationNumberInput.value = "";
+    identificationFeedback.textContent = "";
+    updateIdentificationFields();
+  });
+  identificationNumberInput.addEventListener("input", () => {
+    const start = identificationNumberInput.selectionStart;
+    const end = identificationNumberInput.selectionEnd;
+    const uppercaseValue = identificationNumberInput.value.toUpperCase();
+    if (identificationNumberInput.value !== uppercaseValue) {
+      identificationNumberInput.value = uppercaseValue;
+      identificationNumberInput.setSelectionRange(start, end);
+    }
+  });
+  updateIdentificationFields();
 }
 
 const photoInput = document.querySelector("#childPhotos");

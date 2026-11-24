@@ -4,7 +4,8 @@
 
 Use Node.js 22.x, as required by the Supabase SDK.
 
-1. In the Supabase SQL Editor, run [`supabase/migrations/20261124000000_initial_schema.sql`](./supabase/migrations/20261124000000_initial_schema.sql), then [`supabase/migrations/20261124010000_storage_buckets.sql`](./supabase/migrations/20261124010000_storage_buckets.sql).
+1. In the Supabase SQL Editor, run [`supabase/migrations/20261124000000_initial_schema.sql`](./supabase/migrations/20261124000000_initial_schema.sql), [`supabase/migrations/20261124010000_storage_buckets.sql`](./supabase/migrations/20261124010000_storage_buckets.sql), and [`supabase/migrations/20261124150000_ghana_card_number.sql`](./supabase/migrations/20261124150000_ghana_card_number.sql).
+   For an already-initialized project, run the Ghana Card migration before deploying this change.
 2. In Supabase project settings, copy the project URL, service-role key, and PostgreSQL connection string. Use the session pooler connection string if the direct database host is not reachable from your hosting provider.
 3. Keep all credentials server-side. Never expose the service-role key or database connection string in browser code.
 4. Install dependencies with `npm install`. Set the environment variables in the same terminal before starting the server:
@@ -21,7 +22,7 @@ npm start
 
 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SESSION_SECRET` are required on every start. `ADMIN_EMAIL` and `ADMIN_PASSWORD` create the first website administrator when the Supabase database does not already contain one. The admin login remains the app's existing login system; Supabase Auth is not enabled.
 
-The app seeds its default CMS content and settings on first start. Existing SQLite records and previously uploaded local files are not automatically copied. CMS media and resources are stored in the public `site-assets` bucket. Registration photos and ID documents are stored in the private `registration-files` bucket and are only served through administrator-authenticated routes.
+The app seeds its default CMS content and settings on first start. Existing SQLite records and previously uploaded local files are not automatically copied. CMS media and resources are stored in the public `site-assets` bucket. Registration photos and ID documents are stored in the private `registration-files` bucket and are only served through administrator-authenticated routes. Ghana Card registrations store the card number instead of an uploaded card image.
 
 ## Deploy to Render
 

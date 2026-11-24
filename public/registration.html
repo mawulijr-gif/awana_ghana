@@ -52,14 +52,6 @@
             <input id="clubName" name="clubName" type="text" maxlength="200" placeholder="Enter the Awana club name" required>
           </label>
           <p class="registration-field-note">If you are unsure of the club name, enter “Not sure yet” and we’ll follow up.</p>
-          <label class="photo-drop-zone" for="childPhotos" id="photoDropZone">
-            <input id="childPhotos" name="childPhotos" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-describedby="photoUploadHelp">
-            <span class="photo-drop-icon" aria-hidden="true">↑</span>
-            <strong>Drop your child’s photos here or browse</strong>
-            <small id="photoUploadHelp">Optional · up to 3 JPG, PNG, GIF or WebP images · 5 MB each</small>
-          </label>
-          <p class="photo-feedback" id="photoFeedback" role="status" aria-live="polite"></p>
-          <div class="photo-preview-list" id="photoPreviewList"></div>
           <label>Identification type
             <select id="childIdentificationType" name="childIdentificationType">
               <option value="">Choose an identification type (optional)</option>
@@ -69,13 +61,26 @@
               <option value="Other">Other identification</option>
             </select>
           </label>
-          <label class="identification-upload" for="childIdentification">
+          <label id="ghanaCardNumberField" class="identification-number" hidden>
+            Ghana Card number
+            <input id="childIdentificationNumber" name="childIdentificationNumber" type="text" maxlength="15" pattern="GHA-[0-9]{9}-[0-9]" title="Use the format GHA-XXXXXXXXX-X." placeholder="GHA-XXXXXXXXX-X" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="ghanaCardNumberHelp">
+            <small id="ghanaCardNumberHelp">Enter the number in the format GHA-XXXXXXXXX-X.</small>
+          </label>
+          <label class="identification-upload" for="childIdentification" id="identificationUpload" hidden>
             <input id="childIdentification" name="childIdentification" type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" aria-describedby="identificationUploadHelp">
             <span class="photo-drop-icon" aria-hidden="true">↑</span>
             <strong>Upload identification document</strong>
-            <small id="identificationUploadHelp">Optional · Ghana Card, birth certificate, health insurance card or other ID · JPG, PNG, GIF, WebP or PDF · 5 MB max</small>
+            <small id="identificationUploadHelp">Birth certificate, health insurance card or other ID · JPG, PNG, GIF, WebP or PDF · 5 MB max</small>
           </label>
           <p class="identification-feedback" id="identificationFeedback" role="status" aria-live="polite"></p>
+          <label class="photo-drop-zone" for="childPhotos" id="photoDropZone">
+            <input id="childPhotos" name="childPhotos" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-describedby="photoUploadHelp">
+            <span class="photo-drop-icon" aria-hidden="true">↑</span>
+            <strong>Drop your child’s photos here or browse</strong>
+            <small id="photoUploadHelp">Optional · up to 3 JPG, PNG, GIF or WebP images · 5 MB each</small>
+          </label>
+          <p class="photo-feedback" id="photoFeedback" role="status" aria-live="polite"></p>
+          <div class="photo-preview-list" id="photoPreviewList"></div>
 
           <h2>Parent or guardian details</h2>
           <label>Parent or guardian’s full name
@@ -104,10 +109,10 @@
             </label>
           </div>
 
-          <p class="registration-privacy">We use these details, optional photos and identification document to follow up about Awana participation and connect your family with a local club. Submitted information and files are stored privately and are available only to authorised administrators in the website dashboard.</p>
+          <p class="registration-privacy">We use these details, optional photos and identification information to follow up about Awana participation and connect your family with a local club. Submitted information and files are stored privately and are available only to authorised administrators in the website dashboard.</p>
           <label class="registration-consent">
             <input name="consent" type="checkbox" value="true" required>
-            <span>I am the child’s parent or legal guardian, or am authorised to provide these details and photos, and I consent to Awana Clubs Ghana using them to follow up about this registration.</span>
+            <span>I am the child’s parent or legal guardian, or am authorised to provide these details, photos and identification information, and I consent to Awana Clubs Ghana using them to follow up about this registration.</span>
           </label>
           <button class="registration-submit" type="submit">Submit registration <span aria-hidden="true">→</span></button>
           <p class="form-message" role="status" aria-live="polite"></p>

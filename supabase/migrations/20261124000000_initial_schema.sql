@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   club_name text NOT NULL DEFAULT '',
   photos text NOT NULL DEFAULT '[]',
   identification_type text NOT NULL DEFAULT '',
+  identification_number text NOT NULL DEFAULT '',
   identification_file text NOT NULL DEFAULT '',
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

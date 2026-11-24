@@ -89,6 +89,8 @@ img { max-width:100%; display:block; }
 .registration-form h2:not(:first-child) { margin-top:34px; padding-top:28px; border-top:1px solid #e3e9e6; }
 .registration-form .form-row { margin-bottom:0; }
 .registration-form select { width:100%; margin-top:6px; min-height:44px; border:1px solid #ccd7d4; border-radius:3px; padding:10px 12px; background:white; font:inherit; }
+.registration-form [hidden] { display:none!important; }
+.identification-number small { color:#71827e; font-size:11px; font-weight:500; }
 .registration-field-note { margin:-6px 0 18px; color:#71827e; font-size:11px; }
 .registration-privacy { margin:22px 0; color:#60736e; font-size:13px; line-height:1.6; }
 .photo-drop-zone { position:relative; min-height:150px; margin:22px 0 0; padding:22px; display:flex!important; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px dashed #9aafa8; border-radius:5px; background:#f9fbfa; color:var(--ink); text-align:center; cursor:pointer; }

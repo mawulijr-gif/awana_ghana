@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 const multer = require("multer");
 const { createClient } = require("@supabase/supabase-js");
+const { validateRegistrationIdentification } = require("./lib/registration-identification");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -295,6 +296,7 @@ app.post("/api/registrations", (req, res, next) => {
     const rank = text(body.rank);
     const clubName = text(body.clubName);
     const identificationType = text(body.childIdentificationType);
+    const rawIdentificationNumber = text(body.childIdentificationNumber);
     const guardianName = text(body.guardianName);
     const guardianRelationship = text(body.guardianRelationship);
     const guardianPhone = text(body.guardianPhone);
@@ -326,13 +328,13 @@ app.post("/api/registrations", (req, res, next) => {
 
     const photos = req.files.childPhotos || [];
     const identification = (req.files.childIdentification || [])[0];
-    const validIdentificationTypes = new Set(["Ghana Card", "Birth certificate", "Health insurance", "Other"]);
-    if (identification && !validIdentificationTypes.has(identificationType)) {
-      return reject("Choose the type of identification you uploaded.");
-    }
-    if (!identification && identificationType) {
-      return reject("Upload the selected identification document or clear its type.");
-    }
+    const identificationValidation = validateRegistrationIdentification(
+      identificationType,
+      rawIdentificationNumber,
+      Boolean(identification)
+    );
+    if (identificationValidation.error) return reject(identificationValidation.error);
+    const identificationNumber = identificationValidation.identificationNumber;
     if (photos.some(file => !hasValidImageSignature(file))) {
       return reject("One or more uploaded files are not valid image files.");
     }
@@ -355,11 +357,11 @@ app.post("/api/registrations", (req, res, next) => {
         uploadedNames.push(identificationName);
       }
       await db.query(`INSERT INTO registrations
-        (child_name, child_dob, programme, guardian_name, guardian_relationship, guardian_phone, guardian_email, location, consent, rank, club_name, photos, identification_type, identification_file)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, $12, $13)`,
+        (child_name, child_dob, programme, guardian_name, guardian_relationship, guardian_phone, guardian_email, location, consent, rank, club_name, photos, identification_type, identification_number, identification_file)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, $12, $13, $14)`,
       [
         childName, childDob, rank, guardianName, guardianRelationship, guardianPhone, guardianEmail, location,
-        rank, clubName, JSON.stringify(photoNames), identificationType, identificationName
+        rank, clubName, JSON.stringify(photoNames), identificationType, identificationNumber || "", identificationName
       ]);
     } catch (registrationError) {
       try {
