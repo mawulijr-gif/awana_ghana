@@ -4,14 +4,18 @@ const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
-const Database = require("better-sqlite3");
+const { Pool } = require("pg");
 const multer = require("multer");
 
 const app = express();
 const port = process.env.PORT || 3000;
 const sessionSecret = process.env.SESSION_SECRET;
+const databaseUrl = process.env.DATABASE_URL;
 if (!sessionSecret) {
   throw new Error("Set SESSION_SECRET before starting the server.");
+}
+if (!databaseUrl) {
+  throw new Error("Set DATABASE_URL to your Supabase PostgreSQL connection string before starting the server.");
 }
 const dataDir = path.join(__dirname, "data");
 const uploadDir = path.join(__dirname, "public", "uploads");
@@ -23,88 +27,8 @@ fs.mkdirSync(resourceUploadDir, { recursive: true });
 fs.mkdirSync(registrationPhotoDir, { recursive: true });
 fs.mkdirSync(registrationIdentificationDir, { recursive: true });
 
-const db = new Database(path.join(dataDir, "awana.sqlite"));
-db.pragma("journal_mode = WAL");
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'administrator'
-  );
-  CREATE TABLE IF NOT EXISTS enquiries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT, email TEXT, telephone TEXT, organisation TEXT,
-    subject TEXT, message TEXT, status TEXT DEFAULT 'New', created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS registrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    child_name TEXT NOT NULL,
-    child_dob TEXT NOT NULL,
-    programme TEXT NOT NULL,
-    guardian_name TEXT NOT NULL,
-    guardian_relationship TEXT NOT NULL,
-    guardian_phone TEXT NOT NULL,
-    guardian_email TEXT NOT NULL DEFAULT '',
-    location TEXT NOT NULL,
-    consent INTEGER NOT NULL DEFAULT 0,
-    rank TEXT NOT NULL DEFAULT '',
-    club_name TEXT NOT NULL DEFAULT '',
-    photos TEXT NOT NULL DEFAULT '[]',
-    identification_type TEXT NOT NULL DEFAULT '',
-    identification_file TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS subscribers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    first_name TEXT, last_name TEXT, email TEXT UNIQUE, location TEXT,
-    consent INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-  CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT, summary TEXT, date TEXT, time TEXT, venue TEXT, status TEXT DEFAULT 'Published'
-  );
-  CREATE TABLE IF NOT EXISTS faqs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT, question TEXT, answer TEXT, sort_order INTEGER DEFAULT 0
-  );
-  CREATE TABLE IF NOT EXISTS cms_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    title TEXT NOT NULL,
-    summary TEXT NOT NULL DEFAULT '',
-    body TEXT NOT NULL DEFAULT '',
-    image_url TEXT NOT NULL DEFAULT '',
-    category TEXT NOT NULL DEFAULT '',
-    event_date TEXT NOT NULL DEFAULT '',
-    event_time TEXT NOT NULL DEFAULT '',
-    venue TEXT NOT NULL DEFAULT '',
-    link_url TEXT NOT NULL DEFAULT '',
-    published INTEGER NOT NULL DEFAULT 1,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(type, slug)
-  );
-  CREATE TABLE IF NOT EXISTS site_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-`);
-
-const registrationColumns = new Set(db.pragma("table_info(registrations)").map(column => column.name));
-for (const [name, definition] of [
-  ["rank", "TEXT NOT NULL DEFAULT ''"],
-  ["club_name", "TEXT NOT NULL DEFAULT ''"],
-  ["photos", "TEXT NOT NULL DEFAULT '[]'"],
-  ["identification_type", "TEXT NOT NULL DEFAULT ''"],
-  ["identification_file", "TEXT NOT NULL DEFAULT ''"]
-]) {
-  if (!registrationColumns.has(name)) {
-    db.exec(`ALTER TABLE registrations ADD COLUMN ${name} ${definition}`);
-  }
-}
+const db = new Pool({ connectionString: databaseUrl, max: 10 });
+db.on("error", error => console.error("Supabase database connection error:", error));
 
 const defaultCmsItems = [
   ["pages", "about", "About Awana Ghana", "Partnering with churches to help children and young people know, love and serve Jesus.", "Faith for a lifetime\n\nAwana Clubs Ghana supports local churches as they build welcoming, engaging environments where children can explore the Bible and grow in faith.\n\nOur approach brings biblical teaching, caring relationships and fun activities together. We work alongside churches, leaders and families to encourage the next generation.", "", "About", 1],
@@ -139,16 +63,6 @@ const defaultCmsItems = [
   ["resources", "leader-development", "Leader Development", "Training and ministry guidance for volunteers.", "Training", "", "Leaders", 2],
   ["resources", "parent-resources", "Parent Resources", "Information for families about club and discipleship.", "Family", "", "Families", 3]
 ];
-
-const insertCmsItem = db.prepare(`INSERT OR IGNORE INTO cms_items
-  (type, slug, title, summary, body, image_url, category, published, sort_order)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-const seedCms = db.transaction(() => {
-  for (const [type, slug, title, summary, body, imageUrl, category, order] of defaultCmsItems) {
-    insertCmsItem.run(type, slug, title, summary, body, imageUrl, category, 1, order);
-  }
-});
-seedCms();
 
 const defaultSettings = {
   "brand.tagline": "Building faith. Inspiring purpose. Transforming generations.",
@@ -220,19 +134,47 @@ const defaultSettings = {
   "social.instagram": "",
   "social.youtube": ""
 };
-const saveDefaultSetting = db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)");
-for (const [key, value] of Object.entries(defaultSettings)) saveDefaultSetting.run(key, value);
 
-const adminCount = db.prepare("SELECT COUNT(*) count FROM users WHERE role = 'administrator'").get().count;
-if (!adminCount) {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminEmail || !adminPassword || adminPassword.length < 12) {
-    throw new Error("Set ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters to create the first administrator.");
+async function withTransaction(operation) {
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await operation(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-  db.prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)").run(
-    "Awana Administrator", adminEmail, bcrypt.hashSync(adminPassword, 10), "administrator"
-  );
+}
+
+async function initializeDatabase() {
+  await db.query("SELECT 1");
+  await withTransaction(async client => {
+    for (const [type, slug, title, summary, body, imageUrl, category, order] of defaultCmsItems) {
+      await client.query(`INSERT INTO cms_items
+        (type, slug, title, summary, body, image_url, category, published, sort_order)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8)
+        ON CONFLICT (type, slug) DO NOTHING`,
+      [type, slug, title, summary, body, imageUrl, category, order]);
+    }
+    for (const [key, value] of Object.entries(defaultSettings)) {
+      await client.query("INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", [key, value]);
+    }
+
+    const { rows } = await client.query("SELECT COUNT(*)::int AS count FROM users WHERE role = 'administrator'");
+    if (!rows[0].count) {
+      const adminEmail = process.env.ADMIN_EMAIL;
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminEmail || !adminPassword || adminPassword.length < 12) {
+        throw new Error("Set ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters to create the first administrator.");
+      }
+      await client.query("INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)",
+        ["Awana Administrator", adminEmail, bcrypt.hashSync(adminPassword, 10), "administrator"]);
+    }
+  });
 }
 
 app.use(express.json({ limit: "1mb" }));
@@ -248,52 +190,63 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/register", (_req, res) => res.sendFile(path.join(__dirname, "public", "registration.html")));
-app.get("/api/events", (_req, res) => {
-  res.json(db.prepare("SELECT * FROM cms_items WHERE type = 'events' AND published = 1 ORDER BY event_date, sort_order, id LIMIT 6").all());
+app.get("/api/events", async (_req, res) => {
+  const { rows } = await db.query("SELECT * FROM cms_items WHERE type = 'events' AND published = 1 ORDER BY event_date, sort_order, id LIMIT 6");
+  res.json(rows);
 });
-app.get("/api/faqs", (_req, res) => {
-  res.json(db.prepare("SELECT * FROM cms_items WHERE type = 'faqs' AND published = 1 ORDER BY sort_order, id").all());
+app.get("/api/faqs", async (_req, res) => {
+  const { rows } = await db.query("SELECT * FROM cms_items WHERE type = 'faqs' AND published = 1 ORDER BY sort_order, id");
+  res.json(rows);
 });
-app.get("/api/site/content", (_req, res) => {
-  const settings = Object.fromEntries(db.prepare("SELECT key, value FROM site_settings").all().map(row => [row.key, row.value]));
-  const items = db.prepare("SELECT * FROM cms_items WHERE published = 1 ORDER BY sort_order, id").all();
+app.get("/api/site/content", async (_req, res) => {
+  const [settingsResult, itemsResult] = await Promise.all([
+    db.query("SELECT key, value FROM site_settings"),
+    db.query("SELECT * FROM cms_items WHERE published = 1 ORDER BY sort_order, id")
+  ]);
+  const settings = Object.fromEntries(settingsResult.rows.map(row => [row.key, row.value]));
+  const items = itemsResult.rows;
   res.json({ settings, items });
 });
-app.get("/api/site/page", (req, res) => {
+app.get("/api/site/page", async (req, res) => {
   const slug = String(req.query.slug || "");
-  const page = db.prepare("SELECT * FROM cms_items WHERE type IN ('pages', 'programmes') AND slug = ? AND published = 1 ORDER BY CASE type WHEN 'pages' THEN 0 ELSE 1 END LIMIT 1").get(slug);
+  const { rows } = await db.query(`SELECT * FROM cms_items
+    WHERE type IN ('pages', 'programmes') AND slug = $1 AND published = 1
+    ORDER BY CASE type WHEN 'pages' THEN 0 ELSE 1 END LIMIT 1`, [slug]);
+  const page = rows[0];
   if (!page) return res.status(404).json({ error: "Page not found." });
   res.json(page);
 });
 
-app.get(/^\/(.+)$/, (req, res, next) => {
+app.get(/^\/(.+)$/, async (req, res, next) => {
   const slug = req.params[0];
   if (slug.startsWith("api/")) return next();
-  const page = db.prepare("SELECT id FROM cms_items WHERE type IN ('pages', 'programmes') AND slug = ? AND published = 1 LIMIT 1").get(slug);
+  const { rows } = await db.query("SELECT id FROM cms_items WHERE type IN ('pages', 'programmes') AND slug = $1 AND published = 1 LIMIT 1", [slug]);
+  const page = rows[0];
   if (page) {
     return res.sendFile(path.join(__dirname, "public", "page.html"));
   }
   next();
 });
 
-app.post("/api/enquiries", (req, res) => {
+app.post("/api/enquiries", async (req, res) => {
   const { name, email, telephone = "", organisation = "", subject = "Website enquiry", message } = req.body;
   if (!name || !email || !message) return res.status(400).json({ error: "Name, email and message are required." });
-  db.prepare(`INSERT INTO enquiries (name, email, telephone, organisation, subject, message)
-    VALUES (?, ?, ?, ?, ?, ?)`).run(name.trim(), email.trim(), telephone.trim(), organisation.trim(), subject.trim(), message.trim());
+  await db.query(`INSERT INTO enquiries (name, email, telephone, organisation, subject, message)
+    VALUES ($1, $2, $3, $4, $5, $6)`,
+  [name.trim(), email.trim(), telephone.trim(), organisation.trim(), subject.trim(), message.trim()]);
   res.status(201).json({ success: true });
 });
 
-app.post("/api/newsletter", (req, res) => {
+app.post("/api/newsletter", async (req, res) => {
   const { firstName = "", lastName = "", email, location = "", consent } = req.body;
   if (!email || consent !== true && consent !== "true") {
     return res.status(400).json({ error: "A valid email and consent are required." });
   }
   try {
-    db.prepare(`INSERT INTO subscribers (first_name, last_name, email, location, consent)
-      VALUES (?, ?, ?, ?, 1)`).run(firstName.trim(), lastName.trim(), email.trim(), location.trim());
+    await db.query(`INSERT INTO subscribers (first_name, last_name, email, location, consent)
+      VALUES ($1, $2, $3, $4, 1)`, [firstName.trim(), lastName.trim(), email.trim(), location.trim()]);
   } catch (error) {
-    if (String(error).includes("UNIQUE")) return res.status(409).json({ error: "This email is already subscribed." });
+    if (error.code === "23505") return res.status(409).json({ error: "This email is already subscribed." });
     throw error;
   }
   res.status(201).json({ success: true });
@@ -306,7 +259,7 @@ app.post("/api/registrations", (req, res, next) => {
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
     }
   };
-  registrationUpload.fields([{ name: "childPhotos", maxCount: 3 }, { name: "childIdentification", maxCount: 1 }])(req, res, error => {
+  registrationUpload.fields([{ name: "childPhotos", maxCount: 3 }, { name: "childIdentification", maxCount: 1 }])(req, res, async error => {
     if (error) {
       discardUploadedFiles();
       const message = error.code === "LIMIT_FILE_SIZE"
@@ -373,12 +326,13 @@ app.post("/api/registrations", (req, res, next) => {
     }
 
     try {
-      db.prepare(`INSERT INTO registrations
+      await db.query(`INSERT INTO registrations
         (child_name, child_dob, programme, guardian_name, guardian_relationship, guardian_phone, guardian_email, location, consent, rank, club_name, photos, identification_type, identification_file)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`).run(
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, $12, $13)`,
+      [
         childName, childDob, rank, guardianName, guardianRelationship, guardianPhone, guardianEmail, location,
         rank, clubName, JSON.stringify(photos.map(file => file.filename)), identificationType, identification ? identification.filename : ""
-      );
+      ]);
     } catch (insertError) {
       discardUploadedFiles();
       return next(insertError);
@@ -387,9 +341,10 @@ app.post("/api/registrations", (req, res, next) => {
   });
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
-  const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  const { rows } = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+  const user = rows[0];
   if (!user || !bcrypt.compareSync(password || "", user.password)) {
     return res.status(401).json({ error: "Invalid email or password." });
   }
@@ -560,16 +515,16 @@ function normalizeCmsItem(input) {
   };
 }
 
-app.get("/api/admin/content", requireAdmin, (req, res) => {
+app.get("/api/admin/content", requireAdmin, async (req, res) => {
   const type = String(req.query.type || "");
   if (type && !cmsTypes.has(type)) return res.status(400).json({ error: "Invalid content type." });
-  const items = type
-    ? db.prepare("SELECT * FROM cms_items WHERE type = ? ORDER BY sort_order, updated_at DESC, id DESC").all(type)
-    : db.prepare("SELECT * FROM cms_items ORDER BY type, sort_order, updated_at DESC, id DESC").all();
-  res.json(items);
+  const result = type
+    ? await db.query("SELECT * FROM cms_items WHERE type = $1 ORDER BY sort_order, updated_at DESC, id DESC", [type])
+    : await db.query("SELECT * FROM cms_items ORDER BY type, sort_order, updated_at DESC, id DESC");
+  res.json(result.rows);
 });
 
-app.post("/api/admin/content", requireAdmin, (req, res) => {
+app.post("/api/admin/content", requireAdmin, async (req, res) => {
   let item;
   try {
     item = normalizeCmsItem(req.body);
@@ -577,17 +532,21 @@ app.post("/api/admin/content", requireAdmin, (req, res) => {
     return res.status(400).json({ error: error.message });
   }
   try {
-    const result = db.prepare(`INSERT INTO cms_items
+    const result = await db.query(`INSERT INTO cms_items
       (type, slug, title, summary, body, image_url, category, event_date, event_time, venue, link_url, published, sort_order, updated_at)
-      VALUES (@type, @slug, @title, @summary, @body, @image_url, @category, @event_date, @event_time, @venue, @link_url, @published, @sort_order, CURRENT_TIMESTAMP)`).run(item);
-    res.status(201).json(db.prepare("SELECT * FROM cms_items WHERE id = ?").get(result.lastInsertRowid));
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
+      RETURNING *`, [
+      item.type, item.slug, item.title, item.summary, item.body, item.image_url, item.category,
+      item.event_date, item.event_time, item.venue, item.link_url, item.published, item.sort_order
+    ]);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
-    if (String(error.code).includes("CONSTRAINT")) return res.status(409).json({ error: "That slug is already in use for this content type." });
+    if (error.code === "23505") return res.status(409).json({ error: "That slug is already in use for this content type." });
     throw error;
   }
 });
 
-app.put("/api/admin/content/:id", requireAdmin, (req, res) => {
+app.put("/api/admin/content/:id", requireAdmin, async (req, res) => {
   let item;
   try {
     item = normalizeCmsItem(req.body);
@@ -595,25 +554,29 @@ app.put("/api/admin/content/:id", requireAdmin, (req, res) => {
     return res.status(400).json({ error: error.message });
   }
   try {
-    const result = db.prepare(`UPDATE cms_items SET type = @type, slug = @slug, title = @title, summary = @summary,
-      body = @body, image_url = @image_url, category = @category, event_date = @event_date, event_time = @event_time,
-      venue = @venue, link_url = @link_url, published = @published, sort_order = @sort_order,
-      updated_at = CURRENT_TIMESTAMP WHERE id = @id`).run({ ...item, id: req.params.id });
-    if (!result.changes) return res.status(404).json({ error: "Content item not found." });
-    res.json(db.prepare("SELECT * FROM cms_items WHERE id = ?").get(req.params.id));
+    const result = await db.query(`UPDATE cms_items SET type = $1, slug = $2, title = $3, summary = $4,
+      body = $5, image_url = $6, category = $7, event_date = $8, event_time = $9,
+      venue = $10, link_url = $11, published = $12, sort_order = $13,
+      updated_at = CURRENT_TIMESTAMP WHERE id = $14 RETURNING *`, [
+      item.type, item.slug, item.title, item.summary, item.body, item.image_url, item.category,
+      item.event_date, item.event_time, item.venue, item.link_url, item.published, item.sort_order, req.params.id
+    ]);
+    if (!result.rowCount) return res.status(404).json({ error: "Content item not found." });
+    res.json(result.rows[0]);
   } catch (error) {
-    if (String(error.code).includes("CONSTRAINT")) return res.status(409).json({ error: "That slug is already in use for this content type." });
+    if (error.code === "23505") return res.status(409).json({ error: "That slug is already in use for this content type." });
     throw error;
   }
 });
 
-app.delete("/api/admin/files/:filename", requireAdmin, (req, res) => {
+app.delete("/api/admin/files/:filename", requireAdmin, async (req, res) => {
   const filename = req.params.filename;
   if (!/^[0-9a-f-]{36}\.(pdf|docx?)$/i.test(filename) || path.basename(filename) !== filename) {
     return res.status(400).json({ error: "Invalid resource filename." });
   }
   const url = `/uploads/resources/${filename}`;
-  if (db.prepare("SELECT id FROM cms_items WHERE link_url = ? LIMIT 1").get(url)) {
+  const { rows } = await db.query("SELECT id FROM cms_items WHERE link_url = $1 LIMIT 1", [url]);
+  if (rows[0]) {
     return res.status(409).json({ error: "This file is attached to a resource. Remove the attachment before deleting it." });
   }
   const filepath = path.join(resourceUploadDir, filename);
@@ -622,17 +585,18 @@ app.delete("/api/admin/files/:filename", requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
-app.delete("/api/admin/content/:id", requireAdmin, (req, res) => {
-  const result = db.prepare("DELETE FROM cms_items WHERE id = ?").run(req.params.id);
-  if (!result.changes) return res.status(404).json({ error: "Content item not found." });
+app.delete("/api/admin/content/:id", requireAdmin, async (req, res) => {
+  const result = await db.query("DELETE FROM cms_items WHERE id = $1", [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: "Content item not found." });
   res.json({ success: true });
 });
 
-app.get("/api/admin/settings", requireAdmin, (_req, res) => {
-  res.json(Object.fromEntries(db.prepare("SELECT key, value FROM site_settings").all().map(row => [row.key, row.value])));
+app.get("/api/admin/settings", requireAdmin, async (_req, res) => {
+  const { rows } = await db.query("SELECT key, value FROM site_settings");
+  res.json(Object.fromEntries(rows.map(row => [row.key, row.value])));
 });
 
-app.put("/api/admin/settings", requireAdmin, (req, res) => {
+app.put("/api/admin/settings", requireAdmin, async (req, res) => {
   const updates = req.body;
   if (!updates || Array.isArray(updates) || typeof updates !== "object") {
     return res.status(400).json({ error: "Provide a settings object." });
@@ -659,12 +623,14 @@ app.put("/api/admin/settings", requireAdmin, (req, res) => {
       return res.status(400).json({ error: "Enter a valid contact email address." });
     }
   }
-  const saveSetting = db.prepare("INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
-  const saveSettings = db.transaction(() => {
-    for (const [key, value] of entries) saveSetting.run(key, value.trim());
+  await withTransaction(async client => {
+    for (const [key, value] of entries) {
+      await client.query(`INSERT INTO site_settings (key, value) VALUES ($1, $2)
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [key, value.trim()]);
+    }
   });
-  saveSettings();
-  res.json({ success: true, settings: Object.fromEntries(db.prepare("SELECT key, value FROM site_settings").all().map(row => [row.key, row.value])) });
+  const { rows } = await db.query("SELECT key, value FROM site_settings");
+  res.json({ success: true, settings: Object.fromEntries(rows.map(row => [row.key, row.value])) });
 });
 
 app.get("/api/admin/media", requireAdmin, (_req, res) => {
@@ -733,42 +699,54 @@ app.post("/api/admin/files", requireAdmin, (req, res) => {
   });
 });
 
-app.delete("/api/admin/media/:filename", requireAdmin, (req, res) => {
+app.delete("/api/admin/media/:filename", requireAdmin, async (req, res) => {
   const filename = req.params.filename;
   if (!/^[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i.test(filename) || path.basename(filename) !== filename) {
     return res.status(400).json({ error: "Invalid media filename." });
   }
   const url = `/uploads/${filename}`;
-  const itemUse = db.prepare("SELECT id FROM cms_items WHERE image_url = ? OR link_url = ? LIMIT 1").get(url, url);
-  const settingUse = db.prepare("SELECT key FROM site_settings WHERE value = ? LIMIT 1").get(url);
-  if (itemUse || settingUse) return res.status(409).json({ error: "This image is in use. Remove it from its content before deleting it." });
+  const [itemUse, settingUse] = await Promise.all([
+    db.query("SELECT id FROM cms_items WHERE image_url = $1 OR link_url = $1 LIMIT 1", [url]),
+    db.query("SELECT key FROM site_settings WHERE value = $1 LIMIT 1", [url])
+  ]);
+  if (itemUse.rows[0] || settingUse.rows[0]) return res.status(409).json({ error: "This image is in use. Remove it from its content before deleting it." });
   const filepath = path.join(uploadDir, filename);
   if (!fs.existsSync(filepath)) return res.status(404).json({ error: "Image not found." });
   fs.unlinkSync(filepath);
   res.json({ success: true });
 });
 
-app.get("/api/admin/overview", requireAdmin, (_req, res) => {
+app.get("/api/admin/overview", requireAdmin, async (_req, res) => {
+  const [enquiries, registrations, subscribers, events, faqs, recent] = await Promise.all([
+    db.query("SELECT COUNT(*)::int AS count FROM enquiries"),
+    db.query("SELECT COUNT(*)::int AS count FROM registrations"),
+    db.query("SELECT COUNT(*)::int AS count FROM subscribers"),
+    db.query("SELECT COUNT(*)::int AS count FROM cms_items WHERE type = 'events' AND published = 1"),
+    db.query("SELECT COUNT(*)::int AS count FROM cms_items WHERE type = 'faqs' AND published = 1"),
+    db.query("SELECT id, name, email, subject, status, created_at FROM enquiries ORDER BY id DESC LIMIT 8")
+  ]);
   res.json({
-    enquiries: db.prepare("SELECT COUNT(*) count FROM enquiries").get().count,
-    registrations: db.prepare("SELECT COUNT(*) count FROM registrations").get().count,
-    subscribers: db.prepare("SELECT COUNT(*) count FROM subscribers").get().count,
-    events: db.prepare("SELECT COUNT(*) count FROM cms_items WHERE type = 'events' AND published = 1").get().count,
-    faqs: db.prepare("SELECT COUNT(*) count FROM cms_items WHERE type = 'faqs' AND published = 1").get().count,
-    recent: db.prepare("SELECT id, name, email, subject, status, created_at FROM enquiries ORDER BY id DESC LIMIT 8").all()
+    enquiries: enquiries.rows[0].count,
+    registrations: registrations.rows[0].count,
+    subscribers: subscribers.rows[0].count,
+    events: events.rows[0].count,
+    faqs: faqs.rows[0].count,
+    recent: recent.rows
   });
 });
 
-app.get("/api/admin/registrations", requireAdmin, (_req, res) => {
-  res.json(db.prepare("SELECT * FROM registrations ORDER BY id DESC").all());
+app.get("/api/admin/registrations", requireAdmin, async (_req, res) => {
+  const { rows } = await db.query("SELECT * FROM registrations ORDER BY id DESC");
+  res.json(rows);
 });
 
-app.get("/api/admin/registrations/:id/photos/:filename", requireAdmin, (req, res) => {
+app.get("/api/admin/registrations/:id/photos/:filename", requireAdmin, async (req, res) => {
   const { id, filename } = req.params;
   if (!/^[0-9a-f-]{36}\.(jpg|png|gif|webp)$/i.test(filename) || path.basename(filename) !== filename) {
     return res.status(400).json({ error: "Invalid photo filename." });
   }
-  const registration = db.prepare("SELECT photos FROM registrations WHERE id = ?").get(id);
+  const { rows } = await db.query("SELECT photos FROM registrations WHERE id = $1", [id]);
+  const registration = rows[0];
   if (!registration) return res.status(404).json({ error: "Registration not found." });
   const photos = JSON.parse(registration.photos || "[]");
   if (!Array.isArray(photos) || !photos.includes(filename)) {
@@ -781,12 +759,13 @@ app.get("/api/admin/registrations/:id/photos/:filename", requireAdmin, (req, res
   res.sendFile(photoPath);
 });
 
-app.get("/api/admin/registrations/:id/identification/:filename", requireAdmin, (req, res) => {
+app.get("/api/admin/registrations/:id/identification/:filename", requireAdmin, async (req, res) => {
   const { id, filename } = req.params;
   if (!/^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/i.test(filename) || path.basename(filename) !== filename) {
     return res.status(400).json({ error: "Invalid identification filename." });
   }
-  const registration = db.prepare("SELECT identification_file FROM registrations WHERE id = ?").get(id);
+  const { rows } = await db.query("SELECT identification_file FROM registrations WHERE id = $1", [id]);
+  const registration = rows[0];
   if (!registration) return res.status(404).json({ error: "Registration not found." });
   if (registration.identification_file !== filename) {
     return res.status(404).json({ error: "Identification document not found." });
@@ -798,8 +777,9 @@ app.get("/api/admin/registrations/:id/identification/:filename", requireAdmin, (
   res.sendFile(identificationPath);
 });
 
-app.delete("/api/admin/registrations/:id", requireAdmin, (req, res) => {
-  const registration = db.prepare("SELECT photos, identification_file FROM registrations WHERE id = ?").get(req.params.id);
+app.delete("/api/admin/registrations/:id", requireAdmin, async (req, res) => {
+  const { rows } = await db.query("SELECT photos, identification_file FROM registrations WHERE id = $1", [req.params.id]);
+  const registration = rows[0];
   if (!registration) return res.status(404).json({ error: "Registration not found." });
   const photos = JSON.parse(registration.photos || "[]");
   if (Array.isArray(photos)) {
@@ -809,41 +789,43 @@ app.delete("/api/admin/registrations/:id", requireAdmin, (req, res) => {
         if (fs.existsSync(photoPath)) fs.unlinkSync(photoPath);
       }
     }
-    if (typeof registration.identification_file === "string" &&
-        /^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/i.test(registration.identification_file)) {
-      const identificationPath = path.join(registrationIdentificationDir, registration.identification_file);
-      if (fs.existsSync(identificationPath)) fs.unlinkSync(identificationPath);
-    }
   }
-  const result = db.prepare("DELETE FROM registrations WHERE id = ?").run(req.params.id);
-  if (!result.changes) return res.status(404).json({ error: "Registration not found." });
+  if (typeof registration.identification_file === "string" &&
+      /^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/i.test(registration.identification_file)) {
+    const identificationPath = path.join(registrationIdentificationDir, registration.identification_file);
+    if (fs.existsSync(identificationPath)) fs.unlinkSync(identificationPath);
+  }
+  const result = await db.query("DELETE FROM registrations WHERE id = $1", [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: "Registration not found." });
   res.json({ success: true });
 });
 
-app.get("/api/admin/enquiries", requireAdmin, (_req, res) => {
-  res.json(db.prepare("SELECT * FROM enquiries ORDER BY id DESC").all());
+app.get("/api/admin/enquiries", requireAdmin, async (_req, res) => {
+  const { rows } = await db.query("SELECT * FROM enquiries ORDER BY id DESC");
+  res.json(rows);
 });
 
-app.delete("/api/admin/enquiries/:id", requireAdmin, (req, res) => {
-  const result = db.prepare("DELETE FROM enquiries WHERE id = ?").run(req.params.id);
-  if (!result.changes) return res.status(404).json({ error: "Enquiry not found." });
+app.delete("/api/admin/enquiries/:id", requireAdmin, async (req, res) => {
+  const result = await db.query("DELETE FROM enquiries WHERE id = $1", [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: "Enquiry not found." });
   res.json({ success: true });
 });
 
-app.get("/api/admin/subscribers", requireAdmin, (_req, res) => {
-  res.json(db.prepare("SELECT * FROM subscribers ORDER BY id DESC").all());
+app.get("/api/admin/subscribers", requireAdmin, async (_req, res) => {
+  const { rows } = await db.query("SELECT * FROM subscribers ORDER BY id DESC");
+  res.json(rows);
 });
 
-app.delete("/api/admin/subscribers/:id", requireAdmin, (req, res) => {
-  const result = db.prepare("DELETE FROM subscribers WHERE id = ?").run(req.params.id);
-  if (!result.changes) return res.status(404).json({ error: "Subscriber not found." });
+app.delete("/api/admin/subscribers/:id", requireAdmin, async (req, res) => {
+  const result = await db.query("DELETE FROM subscribers WHERE id = $1", [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: "Subscriber not found." });
   res.json({ success: true });
 });
 
-app.patch("/api/admin/enquiries/:id", requireAdmin, (req, res) => {
+app.patch("/api/admin/enquiries/:id", requireAdmin, async (req, res) => {
   const status = req.body.status;
   if (!["New", "In Progress", "Responded", "Closed"].includes(status)) return res.status(400).json({ error: "Invalid status." });
-  db.prepare("UPDATE enquiries SET status = ? WHERE id = ?").run(status, req.params.id);
+  await db.query("UPDATE enquiries SET status = $1 WHERE id = $2", [status, req.params.id]);
   res.json({ success: true });
 });
 
@@ -853,6 +835,13 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ error: "Something went wrong." });
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Awana Clubs Ghana is running at http://localhost:${port}`);
-});
+initializeDatabase()
+  .then(() => {
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`Awana Clubs Ghana is running at http://localhost:${port}`);
+    });
+  })
+  .catch(error => {
+    console.error("Could not initialize Supabase database:", error);
+    db.end().finally(() => { process.exitCode = 1; });
+  });
