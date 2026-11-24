@@ -20,7 +20,11 @@ test("requires a formatted number and rejects a Ghana Card upload", () => {
   );
 });
 
-test("requires an uploaded document for other identification types", () => {
+test("requires an uploaded document for Passport and other supported types", () => {
+  assert.equal(
+    validateRegistrationIdentification("Passport", "", false).error,
+    "Upload the selected identification document."
+  );
   assert.equal(
     validateRegistrationIdentification("Birth certificate", "", false).error,
     "Upload the selected identification document."
@@ -28,6 +32,13 @@ test("requires an uploaded document for other identification types", () => {
   assert.deepEqual(
     validateRegistrationIdentification("Health insurance", "", true),
     { identificationNumber: "" }
+  );
+});
+
+test("rejects the replaced Other identification type", () => {
+  assert.equal(
+    validateRegistrationIdentification("Other", "", true).error,
+    "Choose a valid identification type."
   );
 });
 
