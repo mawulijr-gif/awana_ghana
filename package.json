@@ -6,7 +6,11 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "bcryptjs": "^3.0.2",
     "express": "^5.1.0",
     "express-session": "^1.18.1",

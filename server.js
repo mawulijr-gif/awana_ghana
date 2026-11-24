@@ -1,34 +1,53 @@
 const path = require("path");
-const fs = require("fs");
 const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 const multer = require("multer");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 const port = process.env.PORT || 3000;
 const sessionSecret = process.env.SESSION_SECRET;
 const databaseUrl = process.env.DATABASE_URL;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!sessionSecret) {
   throw new Error("Set SESSION_SECRET before starting the server.");
 }
 if (!databaseUrl) {
   throw new Error("Set DATABASE_URL to your Supabase PostgreSQL connection string before starting the server.");
 }
-const dataDir = path.join(__dirname, "data");
-const uploadDir = path.join(__dirname, "public", "uploads");
-const resourceUploadDir = path.join(uploadDir, "resources");
-const registrationPhotoDir = path.join(dataDir, "registration-photos");
-const registrationIdentificationDir = path.join(dataDir, "registration-identifications");
-fs.mkdirSync(dataDir, { recursive: true });
-fs.mkdirSync(resourceUploadDir, { recursive: true });
-fs.mkdirSync(registrationPhotoDir, { recursive: true });
-fs.mkdirSync(registrationIdentificationDir, { recursive: true });
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before starting the server.");
+}
 
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: { autoRefreshToken: false, persistSession: false }
+});
+const siteAssets = supabase.storage.from("site-assets");
+const registrationAssets = supabase.storage.from("registration-files");
 const db = new Pool({ connectionString: databaseUrl, max: 10 });
 db.on("error", error => console.error("Supabase database connection error:", error));
+
+async function uploadStorageFile(bucket, filename, file) {
+  const { error } = await bucket.upload(filename, file.buffer, {
+    contentType: file.mimetype,
+    upsert: false
+  });
+  if (error) throw error;
+}
+
+async function removeStorageFiles(bucket, filenames) {
+  if (!filenames.length) return;
+  const { error } = await bucket.remove(filenames);
+  if (error) throw error;
+}
+
+function publicAssetUrl(filename) {
+  return siteAssets.getPublicUrl(filename).data.publicUrl;
+}
 
 const defaultCmsItems = [
   ["pages", "about", "About Awana Ghana", "Partnering with churches to help children and young people know, love and serve Jesus.", "Faith for a lifetime\n\nAwana Clubs Ghana supports local churches as they build welcoming, engaging environments where children can explore the Bible and grow in faith.\n\nOur approach brings biblical teaching, caring relationships and fun activities together. We work alongside churches, leaders and families to encourage the next generation.", "", "About", 1],
@@ -179,6 +198,7 @@ async function initializeDatabase() {
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.set("trust proxy", 1);
 app.use(session({
   secret: sessionSecret,
   resave: false,
@@ -187,6 +207,11 @@ app.use(session({
 }));
 
 app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/healthz", async (_req, res) => {
+  await db.query("SELECT 1");
+  res.json({ status: "ok" });
+});
 
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/register", (_req, res) => res.sendFile(path.join(__dirname, "public", "registration.html")));
@@ -253,15 +278,8 @@ app.post("/api/newsletter", async (req, res) => {
 });
 
 app.post("/api/registrations", (req, res, next) => {
-  const uploadedFiles = () => Object.values(req.files || {}).flat();
-  const discardUploadedFiles = () => {
-    for (const file of uploadedFiles()) {
-      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-    }
-  };
   registrationUpload.fields([{ name: "childPhotos", maxCount: 3 }, { name: "childIdentification", maxCount: 1 }])(req, res, async error => {
     if (error) {
-      discardUploadedFiles();
       const message = error.code === "LIMIT_FILE_SIZE"
         ? "Each photo and the identification file must be 5 MB or smaller."
         : error.code === "LIMIT_FILE_COUNT"
@@ -288,10 +306,7 @@ app.post("/api/registrations", (req, res, next) => {
     const validDob = parsedDob && !Number.isNaN(parsedDob.getTime()) &&
       parsedDob.toISOString().slice(0, 10) === childDob &&
       childDob <= new Date().toISOString().slice(0, 10);
-    const reject = message => {
-      discardUploadedFiles();
-      return res.status(400).json({ error: message });
-    };
+    const reject = message => res.status(400).json({ error: message });
 
     if (!childName || !validDob || !validRanks.has(rank) || !clubName || !guardianName ||
         !validRelationships.has(guardianRelationship) || !guardianPhone || !location ||
@@ -325,17 +340,34 @@ app.post("/api/registrations", (req, res, next) => {
       return reject("The identification file content does not match an allowed image or PDF format.");
     }
 
+    const photoNames = photos.map(file => `${crypto.randomUUID()}${imageTypes.get(file.mimetype)}`);
+    const identificationName = identification
+      ? `${crypto.randomUUID()}${identificationTypes.get(identification.mimetype)}`
+      : "";
+    const uploadedNames = [];
     try {
+      for (let index = 0; index < photos.length; index += 1) {
+        await uploadStorageFile(registrationAssets, photoNames[index], photos[index]);
+        uploadedNames.push(photoNames[index]);
+      }
+      if (identification) {
+        await uploadStorageFile(registrationAssets, identificationName, identification);
+        uploadedNames.push(identificationName);
+      }
       await db.query(`INSERT INTO registrations
         (child_name, child_dob, programme, guardian_name, guardian_relationship, guardian_phone, guardian_email, location, consent, rank, club_name, photos, identification_type, identification_file)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10, $11, $12, $13)`,
       [
         childName, childDob, rank, guardianName, guardianRelationship, guardianPhone, guardianEmail, location,
-        rank, clubName, JSON.stringify(photos.map(file => file.filename)), identificationType, identification ? identification.filename : ""
+        rank, clubName, JSON.stringify(photoNames), identificationType, identificationName
       ]);
-    } catch (insertError) {
-      discardUploadedFiles();
-      return next(insertError);
+    } catch (registrationError) {
+      try {
+        await removeStorageFiles(registrationAssets, uploadedNames);
+      } catch (cleanupError) {
+        console.error("Could not clean up registration uploads after a failed registration:", cleanupError);
+      }
+      return next(registrationError);
     }
     res.status(201).json({ success: true });
   });
@@ -378,11 +410,9 @@ const resourceTypes = new Map([
   ["application/msword", ".doc"],
   ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"]
 ]);
+const memoryStorage = multer.memoryStorage();
 const imageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, callback) => callback(null, uploadDir),
-    filename: (_req, file, callback) => callback(null, `${crypto.randomUUID()}${imageTypes.get(file.mimetype)}`)
-  }),
+  storage: memoryStorage,
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => {
     const extension = imageTypes.get(file.mimetype);
@@ -397,13 +427,7 @@ const imageUpload = multer({
   }
 });
 const registrationUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, file, callback) => callback(null, file.fieldname === "childIdentification" ? registrationIdentificationDir : registrationPhotoDir),
-    filename: (_req, file, callback) => {
-      const types = file.fieldname === "childIdentification" ? identificationTypes : imageTypes;
-      callback(null, `${crypto.randomUUID()}${types.get(file.mimetype)}`);
-    }
-  }),
+  storage: memoryStorage,
   limits: { fileSize: 5 * 1024 * 1024, files: 4, fields: 13, fieldSize: 16 * 1024 },
   fileFilter: (_req, file, callback) => {
     const types = file.fieldname === "childIdentification" ? identificationTypes : imageTypes;
@@ -421,10 +445,7 @@ const registrationUpload = multer({
   }
 });
 const resourceUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, callback) => callback(null, resourceUploadDir),
-    filename: (_req, file, callback) => callback(null, `${crypto.randomUUID()}${resourceTypes.get(file.mimetype)}`)
-  }),
+  storage: memoryStorage,
   limits: { fileSize: 20 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => {
     const extension = resourceTypes.get(file.mimetype);
@@ -436,32 +457,29 @@ const resourceUpload = multer({
 });
 
 function hasValidImageSignature(file) {
-  const descriptor = fs.openSync(file.path, "r");
-  const header = Buffer.alloc(12);
-  let bytesRead;
-  try {
-    bytesRead = fs.readSync(descriptor, header, 0, header.length, 0);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-  if (file.mimetype === "image/jpeg") return bytesRead >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
-  if (file.mimetype === "image/png") return bytesRead >= 8 && header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const header = file.buffer.subarray(0, 12);
+  if (file.mimetype === "image/jpeg") return header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+  if (file.mimetype === "image/png") return header.length >= 8 && header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
   if (file.mimetype === "image/gif") return ["GIF87a", "GIF89a"].includes(header.subarray(0, 6).toString("ascii"));
-  if (file.mimetype === "image/webp") return bytesRead >= 12 && header.subarray(0, 4).toString("ascii") === "RIFF" && header.subarray(8, 12).toString("ascii") === "WEBP";
+  if (file.mimetype === "image/webp") return header.length >= 12 && header.subarray(0, 4).toString("ascii") === "RIFF" && header.subarray(8, 12).toString("ascii") === "WEBP";
   return false;
 }
 
 function hasValidIdentificationSignature(file) {
   if (file.mimetype !== "application/pdf") return hasValidImageSignature(file);
-  const descriptor = fs.openSync(file.path, "r");
-  const header = Buffer.alloc(5);
-  let bytesRead;
-  try {
-    bytesRead = fs.readSync(descriptor, header, 0, header.length, 0);
-  } finally {
-    fs.closeSync(descriptor);
+  return file.buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+}
+
+function hasValidResourceSignature(file) {
+  const header = file.buffer.subarray(0, 8);
+  if (file.mimetype === "application/pdf") return header.subarray(0, 5).toString("ascii") === "%PDF-";
+  if (file.mimetype === "application/msword") {
+    return header.equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
   }
-  return bytesRead === 5 && header.toString("ascii") === "%PDF-";
+  if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return header[0] === 0x50 && header[1] === 0x4b && header[2] === 0x03 && header[3] === 0x04;
+  }
+  return false;
 }
 
 function isValidImageUrl(value) {
@@ -574,14 +592,19 @@ app.delete("/api/admin/files/:filename", requireAdmin, async (req, res) => {
   if (!/^[0-9a-f-]{36}\.(pdf|docx?)$/i.test(filename) || path.basename(filename) !== filename) {
     return res.status(400).json({ error: "Invalid resource filename." });
   }
-  const url = `/uploads/resources/${filename}`;
-  const { rows } = await db.query("SELECT id FROM cms_items WHERE link_url = $1 LIMIT 1", [url]);
+  const assetPath = `resources/${filename}`;
+  const legacyUrl = `/uploads/resources/${filename}`;
+  const url = publicAssetUrl(assetPath);
+  const { rows } = await db.query("SELECT id FROM cms_items WHERE link_url = $1 OR link_url = $2 LIMIT 1", [url, legacyUrl]);
   if (rows[0]) {
     return res.status(409).json({ error: "This file is attached to a resource. Remove the attachment before deleting it." });
   }
-  const filepath = path.join(resourceUploadDir, filename);
-  if (!fs.existsSync(filepath)) return res.status(404).json({ error: "Resource file not found." });
-  fs.unlinkSync(filepath);
+  const { data: files, error } = await siteAssets.list("resources", { limit: 1000, search: filename });
+  if (error) throw error;
+  if (!files.some(file => file.id && file.name === filename)) {
+    return res.status(404).json({ error: "Resource file not found." });
+  }
+  await removeStorageFiles(siteAssets, [assetPath]);
   res.json({ success: true });
 });
 
@@ -633,69 +656,54 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
   res.json({ success: true, settings: Object.fromEntries(rows.map(row => [row.key, row.value])) });
 });
 
-app.get("/api/admin/media", requireAdmin, (_req, res) => {
-  const media = fs.readdirSync(uploadDir, { withFileTypes: true })
-    .filter(entry => entry.isFile() && /\.(jpe?g|png|gif|webp)$/i.test(entry.name))
-    .map(entry => ({ filename: entry.name, url: `/uploads/${entry.name}` }));
+app.get("/api/admin/media", requireAdmin, async (_req, res) => {
+  const { data: files, error } = await siteAssets.list("", { limit: 1000 });
+  if (error) throw error;
+  const media = files
+    .filter(file => file.id && /\.(jpe?g|png|gif|webp)$/i.test(file.name))
+    .map(file => ({ filename: file.name, url: publicAssetUrl(file.name) }));
   res.json(media);
 });
 
-app.post("/api/admin/media", requireAdmin, (req, res) => {
+app.post("/api/admin/media", requireAdmin, (req, res, next) => {
   imageUpload.single("image")(req, res, error => {
     if (error) {
       const message = error.code === "LIMIT_FILE_SIZE" ? "Images must be 5 MB or smaller." : error.message;
       return res.status(400).json({ error: message });
     }
     if (!req.file) return res.status(400).json({ error: "Choose an image to upload." });
-    const header = Buffer.alloc(12);
-    const fd = fs.openSync(req.file.path, "r");
-    const bytesRead = fs.readSync(fd, header, 0, header.length, 0);
-    fs.closeSync(fd);
-    const magic = header.subarray(0, bytesRead);
-    const valid = req.file.mimetype === "image/jpeg" ? magic[0] === 0xff && magic[1] === 0xd8 && magic[2] === 0xff
-      : req.file.mimetype === "image/png" ? magic.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-        : req.file.mimetype === "image/gif" ? magic.subarray(0, 6).toString("ascii").match(/^GIF8[79]a$/) !== null
-          : req.file.mimetype === "image/webp" ? magic.subarray(0, 4).toString("ascii") === "RIFF" && magic.subarray(8, 12).toString("ascii") === "WEBP"
-            : false;
-    if (!valid) {
-      fs.unlinkSync(req.file.path);
+    if (!hasValidImageSignature(req.file)) {
       return res.status(400).json({ error: "The uploaded file content does not match an allowed image format." });
     }
-    res.status(201).json({ filename: req.file.filename, url: `/uploads/${req.file.filename}` });
+    const filename = `${crypto.randomUUID()}${imageTypes.get(req.file.mimetype)}`;
+    uploadStorageFile(siteAssets, filename, req.file)
+      .then(() => res.status(201).json({ filename, url: publicAssetUrl(filename) }))
+      .catch(next);
   });
 });
 
-app.get("/api/admin/files", requireAdmin, (_req, res) => {
-  const files = fs.readdirSync(resourceUploadDir, { withFileTypes: true })
-    .filter(entry => entry.isFile() && /\.(pdf|docx?)$/i.test(entry.name))
-    .map(entry => ({ filename: entry.name, url: `/uploads/resources/${entry.name}` }));
-  res.json(files);
+app.get("/api/admin/files", requireAdmin, async (_req, res) => {
+  const { data: files, error } = await siteAssets.list("resources", { limit: 1000 });
+  if (error) throw error;
+  res.json(files
+    .filter(file => file.id && /\.(pdf|docx?)$/i.test(file.name))
+    .map(file => ({ filename: file.name, url: publicAssetUrl(`resources/${file.name}`) })));
 });
 
-app.post("/api/admin/files", requireAdmin, (req, res) => {
+app.post("/api/admin/files", requireAdmin, (req, res, next) => {
   resourceUpload.single("file")(req, res, error => {
     if (error) {
       const message = error.code === "LIMIT_FILE_SIZE" ? "Resource files must be 20 MB or smaller." : error.message;
       return res.status(400).json({ error: message });
     }
     if (!req.file) return res.status(400).json({ error: "Choose a resource file to upload." });
-    const header = Buffer.alloc(8);
-    const fd = fs.openSync(req.file.path, "r");
-    const bytesRead = fs.readSync(fd, header, 0, header.length, 0);
-    fs.closeSync(fd);
-    const signature = header.subarray(0, bytesRead);
-    const valid = req.file.mimetype === "application/pdf"
-      ? signature.subarray(0, 5).toString("ascii") === "%PDF-"
-      : req.file.mimetype === "application/msword"
-        ? signature.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))
-        : req.file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          ? signature[0] === 0x50 && signature[1] === 0x4b && signature[2] === 0x03 && signature[3] === 0x04
-          : false;
-    if (!valid) {
-      fs.unlinkSync(req.file.path);
+    if (!hasValidResourceSignature(req.file)) {
       return res.status(400).json({ error: "The uploaded file content does not match its document format." });
     }
-    res.status(201).json({ filename: req.file.filename, url: `/uploads/resources/${req.file.filename}` });
+    const assetPath = `resources/${crypto.randomUUID()}${resourceTypes.get(req.file.mimetype)}`;
+    uploadStorageFile(siteAssets, assetPath, req.file)
+      .then(() => res.status(201).json({ filename: path.basename(assetPath), url: publicAssetUrl(assetPath) }))
+      .catch(next);
   });
 });
 
@@ -704,15 +712,19 @@ app.delete("/api/admin/media/:filename", requireAdmin, async (req, res) => {
   if (!/^[0-9a-f-]{36}\.(jpg|png|webp|gif)$/i.test(filename) || path.basename(filename) !== filename) {
     return res.status(400).json({ error: "Invalid media filename." });
   }
-  const url = `/uploads/${filename}`;
+  const url = publicAssetUrl(filename);
+  const legacyUrl = `/uploads/${filename}`;
   const [itemUse, settingUse] = await Promise.all([
-    db.query("SELECT id FROM cms_items WHERE image_url = $1 OR link_url = $1 LIMIT 1", [url]),
-    db.query("SELECT key FROM site_settings WHERE value = $1 LIMIT 1", [url])
+    db.query("SELECT id FROM cms_items WHERE image_url IN ($1, $2) OR link_url IN ($1, $2) LIMIT 1", [url, legacyUrl]),
+    db.query("SELECT key FROM site_settings WHERE value IN ($1, $2) LIMIT 1", [url, legacyUrl])
   ]);
   if (itemUse.rows[0] || settingUse.rows[0]) return res.status(409).json({ error: "This image is in use. Remove it from its content before deleting it." });
-  const filepath = path.join(uploadDir, filename);
-  if (!fs.existsSync(filepath)) return res.status(404).json({ error: "Image not found." });
-  fs.unlinkSync(filepath);
+  const { data: files, error } = await siteAssets.list("", { limit: 1000, search: filename });
+  if (error) throw error;
+  if (!files.some(file => file.id && file.name === filename)) {
+    return res.status(404).json({ error: "Image not found." });
+  }
+  await removeStorageFiles(siteAssets, [filename]);
   res.json({ success: true });
 });
 
@@ -752,11 +764,14 @@ app.get("/api/admin/registrations/:id/photos/:filename", requireAdmin, async (re
   if (!Array.isArray(photos) || !photos.includes(filename)) {
     return res.status(404).json({ error: "Photo not found." });
   }
-  const photoPath = path.join(registrationPhotoDir, filename);
-  if (!fs.existsSync(photoPath)) return res.status(404).json({ error: "Photo not found." });
+  const { data, error } = await registrationAssets.download(filename);
+  if (error) {
+    if (String(error.statusCode) === "404") return res.status(404).json({ error: "Photo not found." });
+    throw error;
+  }
   res.type(path.extname(filename));
   res.setHeader("Cache-Control", "private, no-store");
-  res.sendFile(photoPath);
+  res.send(Buffer.from(await data.arrayBuffer()));
 });
 
 app.get("/api/admin/registrations/:id/identification/:filename", requireAdmin, async (req, res) => {
@@ -770,11 +785,14 @@ app.get("/api/admin/registrations/:id/identification/:filename", requireAdmin, a
   if (registration.identification_file !== filename) {
     return res.status(404).json({ error: "Identification document not found." });
   }
-  const identificationPath = path.join(registrationIdentificationDir, filename);
-  if (!fs.existsSync(identificationPath)) return res.status(404).json({ error: "Identification document not found." });
+  const { data, error } = await registrationAssets.download(filename);
+  if (error) {
+    if (String(error.statusCode) === "404") return res.status(404).json({ error: "Identification document not found." });
+    throw error;
+  }
   res.type(path.extname(filename));
   res.setHeader("Cache-Control", "private, no-store");
-  res.sendFile(identificationPath);
+  res.send(Buffer.from(await data.arrayBuffer()));
 });
 
 app.delete("/api/admin/registrations/:id", requireAdmin, async (req, res) => {
@@ -782,19 +800,14 @@ app.delete("/api/admin/registrations/:id", requireAdmin, async (req, res) => {
   const registration = rows[0];
   if (!registration) return res.status(404).json({ error: "Registration not found." });
   const photos = JSON.parse(registration.photos || "[]");
-  if (Array.isArray(photos)) {
-    for (const filename of photos) {
-      if (typeof filename === "string" && /^[0-9a-f-]{36}\.(jpg|png|gif|webp)$/i.test(filename)) {
-        const photoPath = path.join(registrationPhotoDir, filename);
-        if (fs.existsSync(photoPath)) fs.unlinkSync(photoPath);
-      }
-    }
-  }
+  const storedFiles = Array.isArray(photos)
+    ? photos.filter(filename => typeof filename === "string" && /^[0-9a-f-]{36}\.(jpg|png|gif|webp)$/i.test(filename))
+    : [];
   if (typeof registration.identification_file === "string" &&
       /^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/i.test(registration.identification_file)) {
-    const identificationPath = path.join(registrationIdentificationDir, registration.identification_file);
-    if (fs.existsSync(identificationPath)) fs.unlinkSync(identificationPath);
+    storedFiles.push(registration.identification_file);
   }
+  await removeStorageFiles(registrationAssets, storedFiles);
   const result = await db.query("DELETE FROM registrations WHERE id = $1", [req.params.id]);
   if (!result.rowCount) return res.status(404).json({ error: "Registration not found." });
   res.json({ success: true });
