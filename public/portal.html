@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#103f36">
+  <title>Leader Portal | Awana Clubs Ghana</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--green:#103f36;--deep:#0b3029;--bright:#1b6858;--yellow:#ffc928;--ink:#1b302c;--muted:#788984;--line:#e8eeeb;--bg:#f5f7f5;--white:#fff;font-family:"DM Sans",sans-serif;color:var(--ink)}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg)}button,input,select{font:inherit}a{color:inherit;text-decoration:none}
+    .layout{min-height:100vh;display:grid;grid-template-columns:244px minmax(0,1fr)}.sidebar{min-height:100vh;padding:24px 15px 18px;display:flex;flex-direction:column;background:var(--deep);color:#d6e5e0}
+    .brand{display:flex;align-items:center;min-height:56px;padding:0 10px 20px;border-bottom:1px solid #ffffff1c}.brand img{width:160px}.side-label{padding:24px 12px 9px;color:#86a79c;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+    .nav{display:grid;gap:4px}.nav button,.nav a{min-height:43px;padding:0 12px;display:flex;align-items:center;gap:12px;border:0;border-radius:6px;background:transparent;color:#bfd0ca;text-align:left;font-size:12px;font-weight:700;cursor:pointer}
+    .nav button:hover,.nav a:hover,.nav button.active{background:#ffffff16;color:white}.nav button.active{box-shadow:inset 3px 0 var(--yellow)}.nav-icon{width:19px;color:#a9c2b9;text-align:center;font-size:15px}.mobile-signout{display:none!important}
+    .side-bottom{margin-top:auto;padding-top:18px;border-top:1px solid #ffffff1c}.user-chip{padding:10px;display:flex;align-items:center;gap:10px}.avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:50%;background:var(--yellow);color:var(--deep);font-weight:800}
+    .user-chip strong,.user-chip small{display:block;max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.user-chip strong{color:white;font-size:11px}.user-chip small{margin-top:3px;color:#9bb3aa;font-size:9px}
+    .main{min-width:0;padding:0 38px 44px}.topbar{height:68px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px}.topbar strong{color:var(--ink)}
+    .top-actions{display:flex;align-items:center;gap:12px}.top-actions a,.button-secondary{padding:9px 12px;border:1px solid var(--line);border-radius:5px;background:white;font-size:10px;font-weight:800}
+    .content{max-width:1350px;margin:auto}.welcome{padding:29px 0 21px}.kicker{margin:0 0 7px;color:var(--bright);font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}
+    h1,h2,h3,p{margin-top:0}.welcome h1{margin:0;font:800 clamp(24px,3vw,32px)/1.2 Manrope,sans-serif;letter-spacing:-.8px}.welcome h1 em{color:var(--bright);font-style:normal}.welcome p:last-child{margin:7px 0 0;color:var(--muted);font-size:12px}
+    .error{display:none;margin:0 0 14px;padding:11px 14px;border:1px solid #f1c5bd;border-radius:6px;background:#fff4f1;color:#9d3327;font-size:12px}.error.show{display:block}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:13px}.stat,.panel{border:1px solid var(--line);border-radius:8px;background:white;box-shadow:0 3px 12px #16392f05}.stat{min-height:112px;padding:17px}.stat small{color:var(--muted);font-size:10px;font-weight:700}.stat strong{display:block;margin-top:12px;font:800 28px Manrope,sans-serif}.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,.8fr);gap:16px;margin-top:17px;align-items:start}
+    .panel-head{min-height:61px;padding:15px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #edf1ef}.panel-head h2{margin:0;font:800 13px Manrope,sans-serif}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:10px}.panel-body{padding:16px 18px}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left}th{padding:11px 13px;background:#fafcfb;color:#899791;font-size:9px;letter-spacing:.6px;text-transform:uppercase;white-space:nowrap}td{padding:12px 13px;border-top:1px solid #f0f3f1;color:#596b64;font-size:10px;vertical-align:middle}td strong{color:var(--ink)}.empty{padding:25px;text-align:center;color:var(--muted);font-size:11px}
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px;color:#52635c;font-size:10px;font-weight:800}.field.full{grid-column:1/-1}.field input,.field select,.field textarea{width:100%;min-height:39px;padding:9px 10px;border:1px solid #dfe7e3;border-radius:5px;background:#fcfdfc;color:var(--ink);font-size:11px}.field select[multiple]{min-height:110px}.field input:focus,.field select:focus{outline:2px solid #1b685822;border-color:var(--bright)}
+    .primary,.secondary,.danger,.link-button{min-height:36px;padding:0 12px;border:0;border-radius:5px;font-size:10px;font-weight:800;cursor:pointer}.primary{background:var(--green);color:white}.primary:hover{background:var(--bright)}.secondary{border:1px solid var(--line);background:white;color:var(--ink)}.danger{background:#fff0ed;color:#a63e2e}.link-button{background:transparent;color:var(--bright);padding:0 5px}
+    .toolbar{padding:13px 15px;display:flex;flex-wrap:wrap;gap:9px;align-items:center;border-bottom:1px solid var(--line)}.toolbar input,.toolbar select{min-height:35px;padding:7px 9px;border:1px solid var(--line);border-radius:5px;background:white;color:var(--ink);font-size:10px}.toolbar input{flex:1;min-width:180px}.actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+    .pagination{padding:12px 15px;display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:10px}.badge{display:inline-block;padding:5px 8px;border-radius:20px;background:#edf5f1;color:var(--bright);font-size:9px;font-weight:800}.badge.off{background:#fff0ed;color:#a63e2e}
+    .bar-row{display:grid;grid-template-columns:100px 1fr 30px;gap:8px;align-items:center;margin:13px 0;font-size:10px}.bar-track{height:8px;border-radius:8px;background:#edf2ef;overflow:hidden}.bar-fill{height:100%;border-radius:8px;background:var(--bright)}.message{min-height:18px;margin:10px 0 0;color:var(--bright);font-size:10px}.club-card{padding:15px;border:1px solid var(--line);border-radius:6px;margin-bottom:10px}.club-card strong{display:block;font-size:12px}.club-card small{display:block;margin-top:5px;color:var(--muted);font-size:10px}
+    .login{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr;background:white}.showcase{padding:clamp(30px,6vw,75px);display:flex;flex-direction:column;justify-content:space-between;background:var(--green);color:white}.showcase img{width:180px}.pitch{max-width:530px;padding:55px 0}.pitch h1{font:800 clamp(38px,5vw,60px)/1.06 Manrope,sans-serif;letter-spacing:-1.8px}.pitch h1 em{color:var(--yellow);font-style:normal}.pitch p{color:#d4e4df;line-height:1.8;font-size:14px}.form-side{display:grid;place-items:center;padding:30px}.login-card{width:min(390px,100%)}.login-card .mobile-logo{display:none;width:150px;margin-bottom:32px}.login-card h2{font:800 26px Manrope,sans-serif;margin:0 0 7px}.login-card>p{color:var(--muted);font-size:12px;line-height:1.6}.login-card .field{margin:17px 0}.login-card input[type=email],.login-card input[type=password]{height:46px}.remember{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:10px}.remember input{accent-color:var(--bright)}.login-card .primary{width:100%;height:45px;margin-top:12px}.login-note{padding-top:16px;border-top:1px solid var(--line);font-size:10px!important}
+    .output-link{display:none;margin-top:12px;padding:12px;border-radius:5px;background:#edf5f1;color:var(--bright);font-size:10px;overflow-wrap:anywhere}.output-link.show{display:block}
+    @media(max-width:1000px){.main{padding:0 22px 35px}.grid{grid-template-columns:1fr}.sidebar{width:210px}.layout{grid-template-columns:210px minmax(0,1fr)}}
+    @media(max-width:700px){.layout{display:block}.sidebar{min-height:0;padding:0 10px;display:block}.brand{min-height:53px;padding:0;border:0}.brand img{width:130px}.side-label,.side-bottom{display:none}.nav{display:flex;overflow-x:auto;gap:3px;padding-bottom:7px}.nav button,.nav a{min-height:36px;padding:0 9px;white-space:nowrap}.nav .mobile-signout{display:flex!important}.nav-icon{width:auto}.main{padding:0 13px 25px}.topbar{height:50px}.top-actions a{padding:7px}.welcome{padding:22px 0 17px}.stats{grid-template-columns:1fr 1fr;gap:8px}.stat{min-height:98px;padding:12px}.stat strong{font-size:23px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.login{display:block}.showcase{display:none}.form-side{min-height:100vh;padding:24px}.login-card .mobile-logo{display:block}.panel-head{padding:13px}.toolbar{align-items:stretch}.toolbar>*{flex:1}.toolbar input{min-width:100%}}
+    @media print{body{background:white}.sidebar,.topbar,.welcome,.toolbar,.pagination,.no-print{display:none!important}.layout{display:block}.main{padding:0}.content{max-width:none}.panel{box-shadow:none;border:0}.grid{display:block}.table-wrap{overflow:visible}table{font-size:8pt}td,th{white-space:normal}}
+  </style>
+</head>
+<body>
+  <main id="app" aria-live="polite"></main>
+  <script>
+    const app = document.querySelector("#app");
+    const state = { user: null, section: "dashboard", metadata: { clubs: [], ranks: [] }, page: 1, pageSize: 25, search: "", clubId: "", rankId: "", leaders: [] };
+    const e = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    async function api(url, options = {}) {
+      const response = await fetch(url, options);
+      const result = response.headers.get("content-type")?.includes("application/json") ? await response.json() : null;
+      if (!response.ok) throw new Error(result?.error || `Request failed (${response.status}).`);
+      return result;
+    }
+    const json = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    function showError(message) {
+      const node = document.querySelector("#error");
+      if (node) { node.textContent = message; node.classList.add("show"); }
+      else alert(message);
+    }
+    function roleTitle(role) { return role === "super_admin" ? "Super Admin" : "Club Leader"; }
+    function loginView() {
+      app.innerHTML = `<div class="login"><section class="showcase"><a href="/"><img src="/logo.png" alt="Awana Clubs Ghana"></a><div class="pitch"><p class="kicker" style="color:#ffc928">Authorised leader workspace</p><h1>Helping leaders help children <em>grow.</em></h1><p>Sign in to securely register children and support your Awana club. Access is by invitation only.</p></div><small>Awana Clubs Ghana · Leader Portal</small></section><section class="form-side"><div class="login-card"><a href="/"><img class="mobile-logo" src="/logo.png" alt="Awana Clubs Ghana"></a><h2>Welcome back</h2><p>Sign in with your authorised leader account.</p><form id="loginForm"><label class="field">Email address<input name="email" type="email" autocomplete="username" required></label><label class="field">Password<input name="password" type="password" autocomplete="current-password" required></label><label class="remember"><input name="rememberMe" type="checkbox" value="true"> Remember me on this device</label><p class="message" id="loginMessage" role="alert"></p><button class="primary" type="submit">Sign in securely</button></form><p class="login-note">Accounts are created by a Super Admin. Parents and children cannot create accounts. <a href="#" onclick="forgotPassword(event)">Forgot password?</a></p><p><a href="/">← Return to Awana Clubs Ghana</a></p></div></section></div>`;
+      document.querySelector("#loginForm").addEventListener("submit", login);
+    }
+    function forgotPassword(event) {
+      event.preventDefault();
+      alert("For account security, contact your Awana Super Admin. They can issue you a private, single-use password reset link.");
+    }
+    async function login(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector("button");
+      const message = document.querySelector("#loginMessage");
+      button.disabled = true;
+      message.textContent = "";
+      try {
+        const values = Object.fromEntries(new FormData(form));
+        values.rememberMe = form.elements.rememberMe.checked;
+        const result = await api("/api/login", json("POST", values));
+        state.user = result.user;
+        if (new URLSearchParams(location.search).get("next") === "register") state.section = "register";
+        await render();
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        if (button.isConnected) button.disabled = false;
+      }
+    }
+    function navigation() {
+      const links = state.user.role === "super_admin"
+        ? [["dashboard","⌂","Dashboard"],["leaders","♙","Leaders"],["clubs","⌖","Clubs"],["register","＋","Register Child"],["children","▤","Children"],["ranks","✦","Ranks"],["documents","▧","Documents"],["reports","▦","Reports"],["audit","◷","Audit logs"],["profile","⚙","My Profile"]]
+        : [["dashboard","⌂","Dashboard"],["register","＋","Register Child"],["children","▤","All Children"],["my-club","⌖","My Club"],["profile","⚙","My Profile"]];
+      return links.map(([key, icon, label]) => `<button type="button" class="${state.section === key ? "active" : ""}" onclick="openSection('${key}')"><span class="nav-icon">${icon}</span>${label}</button>`).join("") + '<button type="button" class="mobile-signout" onclick="logout()"><span class="nav-icon">↪</span>Sign out</button>';
+    }
+    function shell(content, title) {
+      const name = e(state.user.name);
+      const initials = e((state.user.name || "A").split(/\s+/).map(part => part[0] || "").slice(0,2).join("").toUpperCase());
+      app.innerHTML = `<div class="layout"><aside class="sidebar"><a class="brand" href="/"><img src="/logo.png" alt="Awana Clubs Ghana"></a><div class="side-label">${roleTitle(state.user.role)} workspace</div><nav class="nav" aria-label="Leader portal">${navigation()}${state.user.role === "super_admin" ? '<a href="/admin"><span class="nav-icon">✎</span>Website CMS</a>' : ""}</nav><div class="side-bottom"><div class="user-chip"><span class="avatar">${initials}</span><div><strong>${name}</strong><small>${roleTitle(state.user.role)}</small></div></div><button class="nav" style="width:100%;border:0;background:transparent;color:#bfd0ca;padding:10px;text-align:left;cursor:pointer" onclick="logout()">↪ &nbsp; Sign out</button></div></aside><section class="main"><header class="topbar"><div>Leader Portal / <strong id="sectionTitle">${e(title)}</strong></div><div class="top-actions"><a href="/">View website ↗</a></div></header><div class="content"><div class="welcome"><p class="kicker">Awana Clubs Ghana · ${roleTitle(state.user.role)}</p><h1>${e(title)}</h1><p>${state.section === "dashboard" ? "A clear view of your club’s child registrations and activity." : "Manage your Awana ministry securely."}</p></div><div id="error" class="error" role="alert"></div><div id="sectionContent">${content}</div></div></section></div>`;
+    }
+    function date(value) {
+      if (!value) return "—";
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? e(value) : parsed.toLocaleDateString(undefined, { year:"numeric", month:"short", day:"numeric" });
+    }
+    function barRows(rows, label) {
+      if (!rows.length) return '<p class="empty">No registrations yet.</p>';
+      const max = Math.max(...rows.map(row => Number(row.count) || 0), 1);
+      return rows.map(row => `<div class="bar-row"><span>${e(row[label])}</span><span class="bar-track"><span class="bar-fill" style="display:block;width:${Math.max(3,Number(row.count)/max*100)}%"></span></span><strong>${Number(row.count)}</strong></div>`).join("");
+    }
+    async function dashboardSection() {
+      const data = await api("/api/portal/dashboard");
+      const history = data.history.length ? data.history.map(row => `<tr><td><strong>${e(row.full_name)}</strong></td><td>${e(row.rank)}</td><td>${e(row.club_name)}</td><td>${date(row.created_at)}</td></tr>`).join("") : '<tr><td class="empty" colspan="4">No child registrations yet.</td></tr>';
+      const clubs = data.clubs.map(club => `<div class="club-card"><strong>${e(club.name)} · ${e(club.code)}</strong><small>Your assigned Awana club</small></div>`).join("") || '<p class="empty">No clubs assigned.</p>';
+      shell(`<section class="stats"><article class="stat"><small>Total children registered</small><strong>${Number(data.totalChildren)||0}</strong></article><article class="stat"><small>New registrations · 7 days</small><strong>${Number(data.newRegistrations)||0}</strong></article><article class="stat"><small>Assigned clubs</small><strong>${data.clubs.length}</strong></article></section><div class="grid"><section class="panel"><header class="panel-head"><div><h2>Registration history</h2><p>Most recent child registrations</p></div><button class="link-button" onclick="openSection('children')">View all →</button></header><div class="table-wrap"><table><thead><tr><th>Child</th><th>Rank</th><th>Club</th><th>Date</th></tr></thead><tbody>${history}</tbody></table></div></section><div><section class="panel"><header class="panel-head"><div><h2>Children by rank</h2><p>Current registrations</p></div></header><div class="panel-body">${barRows(data.byRank,"name")}</div></section><section class="panel" style="margin-top:14px"><header class="panel-head"><div><h2>Children by age group</h2><p>Calculated from date of birth</p></div></header><div class="panel-body">${barRows(data.byAgeGroup,"age_group")}</div></section><section class="panel" style="margin-top:14px"><header class="panel-head"><div><h2>${state.user.role==="super_admin"?"Active clubs":"My clubs"}</h2></div></header><div class="panel-body">${clubs}</div></section></div></div>`, "Dashboard");
+    }
+    function childrenToolbar() {
+      const clubOptions = state.metadata.clubs.map(club => `<option value="${Number(club.id)}" ${String(state.clubId)===String(club.id)?"selected":""}>${e(club.name)}</option>`).join("");
+      const rankOptions = state.metadata.ranks.map(rank => `<option value="${Number(rank.id)}" ${String(state.rankId)===String(rank.id)?"selected":""}>${e(rank.name)}</option>`).join("");
+      return `<form class="toolbar" id="childrenFilter"><input name="search" value="${e(state.search)}" placeholder="Search child or guardian"><select name="clubId"><option value="">All assigned clubs</option>${clubOptions}</select><select name="rankId"><option value="">All ranks</option>${rankOptions}</select><button class="secondary" type="submit">Search</button><button class="secondary" type="button" onclick="exportChildren()">Excel / CSV</button><button class="secondary" type="button" onclick="window.print()">Print / PDF</button></form>`;
+    }
+    async function childrenSection(key = "children") {
+      const query = new URLSearchParams({ page:String(state.page), pageSize:String(state.pageSize) });
+      if (state.search) query.set("search", state.search);
+      if (state.clubId) query.set("clubId", state.clubId);
+      if (state.rankId) query.set("rankId", state.rankId);
+      const data = await api(`/api/portal/children?${query}`);
+      const rows = data.rows.map(row => {
+        const photos = Array.isArray(row.photos) ? row.photos : [];
+        const docLink = row.identification_file ? `<a target="_blank" rel="noopener" href="/api/portal/registrations/${Number(row.id)}/files/${encodeURIComponent(row.identification_file)}">${e(row.identification_type||"View")}</a>` :
+          row.identification_number ? `${e(row.identification_type)} · ${e(row.identification_number)}` : "—";
+        const photoLinks = photos.map(name => `<a target="_blank" rel="noopener" href="/api/portal/registrations/${Number(row.id)}/files/${encodeURIComponent(name)}">Photo</a>`).join(", ");
+        const status = ["submitted","reviewed","withdrawn"].includes(row.status) ? row.status : "submitted";
+        const statusControl = `<select aria-label="Registration status" onchange="updateRegistrationStatus(${Number(row.id)},this.value)"><option value="submitted" ${status==="submitted"?"selected":""}>Submitted</option><option value="reviewed" ${status==="reviewed"?"selected":""}>Reviewed</option><option value="withdrawn" ${status==="withdrawn"?"selected":""}>Withdrawn</option></select>`;
+        const deleteControl = state.user.role==="super_admin" ? `<button class="danger" onclick="deletePortalRegistration(${Number(row.id)})">Delete</button>` : "";
+        return `<tr><td><strong>${e(row.child_name)}</strong><br><small>${date(row.date_of_birth)} · ${e(row.gender)}</small></td><td>${e(row.rank||"—")}</td><td>${e(row.club_name||"Club not recorded")}</td><td>${e(`${row.guardian_first_name} ${row.guardian_last_name}`)}</td><td>${e(row.phone)}<br>${e(row.email)}</td><td>${e(row.town_region)}</td><td>${docLink}<br>${photoLinks}</td><td>${date(row.created_at)}</td><td>${statusControl}<br>${deleteControl}</td></tr>`;
+      }).join("") || '<tr><td class="empty" colspan="9">No child registrations match these filters.</td></tr>';
+      const title = key === "children" ? "All Children" : "Reports";
+      shell(`<section class="panel"><header class="panel-head"><div><h2>${title}</h2><p>${Number(data.total)} registration${Number(data.total)===1?"":"s"} · private club-scoped records</p></div></header>${childrenToolbar()}<div class="table-wrap"><table><thead><tr><th>Child</th><th>Rank</th><th>Club</th><th>Parent / guardian</th><th>Contact</th><th>Town / region</th><th>Documents / photos</th><th>Registered</th><th>Status / actions</th></tr></thead><tbody>${rows}</tbody></table></div><footer class="pagination"><span>Page ${data.page} · ${Number(data.total)} records</span><span class="actions"><button class="secondary" ${data.page<=1?"disabled":""} onclick="changePage(-1)">Previous</button><button class="secondary" ${data.page*data.pageSize>=data.total?"disabled":""} onclick="changePage(1)">Next</button></span></footer></section>`, title);
+      document.querySelector("#childrenFilter").addEventListener("submit", event => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        state.search = String(form.get("search") || "").trim();
+        state.clubId = String(form.get("clubId") || "");
+        state.rankId = String(form.get("rankId") || "");
+        state.page = 1;
+        openSection(key);
+      });
+    }
+    function changePage(delta) { state.page = Math.max(1,state.page+delta); openSection(state.section); }
+    async function updateRegistrationStatus(id,status) {
+      try { await api(`/api/portal/registrations/${id}`,json("PATCH",{status})); }
+      catch(error){showError(error.message);openSection(state.section);}
+    }
+    async function deletePortalRegistration(id) {
+      if(!confirm("Delete this child registration and its private files permanently?"))return;
+      try{await api(`/api/portal/registrations/${id}`,{method:"DELETE"});await openSection(state.section);}
+      catch(error){showError(error.message);}
+    }
+    async function exportChildren() {
+      const query = new URLSearchParams();
+      if (state.search) query.set("search",state.search);
+      if (state.clubId) query.set("clubId",state.clubId);
+      if (state.rankId) query.set("rankId",state.rankId);
+      location.href = `/api/portal/children/export.csv?${query}`;
+    }
+    async function clubsSection() {
+      const clubs = await api("/api/admin/clubs");
+      const rows = clubs.map(club => `<tr><td><strong>${e(club.name)}</strong><br><small>${e(club.slug)}</small></td><td>${e(club.code)}</td><td>${e(club.region||"—")}</td><td>${Number(club.leader_count)}</td><td>${Number(club.registration_count)}</td><td><span class="badge ${club.is_active?"":"off"}">${club.is_active?"Active":"Suspended"}</span></td><td><button class="secondary" onclick="toggleClub(${Number(club.id)},${!club.is_active})">${club.is_active?"Suspend":"Activate"}</button></td></tr>`).join("");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>Club management</h2><p>Maintain available Awana clubs and their active status.</p></div></header><div class="panel-body"><form id="clubForm" class="form-grid"><label class="field">Club name<input name="name" required maxlength="160" placeholder="AKOSOMBO COMMUNITY CLUB"></label><label class="field">Club code<input name="code" required maxlength="30" placeholder="ACC"></label><label class="field">URL slug<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="akosombo-community-club"></label><label class="field">Region<input name="region" maxlength="100"></label><div class="field full"><button class="primary" type="submit">Add club</button><p class="message" id="clubMessage"></p></div></form></div><div class="table-wrap"><table><thead><tr><th>Club</th><th>Code</th><th>Region</th><th>Leaders</th><th>Children</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section>`, "Clubs");
+      document.querySelector("#clubForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const values = Object.fromEntries(new FormData(form));
+        try { await api("/api/admin/clubs",json("POST",values)); await clubsSection(); }
+        catch(error){document.querySelector("#clubMessage").textContent=error.message;}
+      });
+    }
+    async function toggleClub(id,isActive) {
+      try { await api(`/api/admin/clubs/${id}`,json("PATCH",{isActive})); await clubsSection(); }
+      catch(error){showError(error.message);}
+    }
+    async function ranksSection() {
+      const ranks = await api("/api/admin/ranks");
+      const rows = ranks.map(rank => `<tr><td><strong>${e(rank.name)}</strong></td><td>${e(rank.age_group||"—")}</td><td>${Number(rank.registration_count)}</td><td><span class="badge ${rank.is_active?"":"off"}">${rank.is_active?"Active":"Inactive"}</span></td><td><button class="secondary" onclick="toggleRank(${Number(rank.id)},${!rank.is_active})">${rank.is_active?"Deactivate":"Activate"}</button></td></tr>`).join("");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>Rank management</h2><p>Active ranks appear in child registration forms.</p></div></header><div class="panel-body"><form id="rankForm" class="form-grid"><label class="field">Rank name<input name="name" maxlength="80" required></label><label class="field">Age group<input name="ageGroup" maxlength="80"></label><div class="field full"><button class="primary" type="submit">Add rank</button><p class="message" id="rankMessage"></p></div></form></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Age group</th><th>Registrations</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section>`, "Ranks");
+      document.querySelector("#rankForm").addEventListener("submit", async event => {
+        event.preventDefault(); const values=Object.fromEntries(new FormData(event.currentTarget));
+        try { await api("/api/admin/ranks",json("POST",values)); await ranksSection(); }
+        catch(error){document.querySelector("#rankMessage").textContent=error.message;}
+      });
+    }
+    async function toggleRank(id,isActive) {
+      try { await api(`/api/admin/ranks/${id}`,json("PATCH",{isActive})); await ranksSection(); }
+      catch(error){showError(error.message);}
+    }
+    async function leadersSection() {
+      const [leaders, clubs] = await Promise.all([api("/api/admin/leaders"), api("/api/admin/clubs")]);
+      state.leaders = leaders;
+      const options = clubs.filter(club=>club.is_active).map(club=>`<option value="${Number(club.id)}">${e(club.name)} · ${e(club.code)}</option>`).join("");
+      const rows = leaders.map(leader => `<tr><td><strong>${e(leader.first_name?`${leader.first_name} ${leader.last_name}`:leader.name)}</strong><br><small>${e(leader.email)} · ${e(leader.phone||"")}</small></td><td>${(leader.clubs||[]).map(club=>e(club.name)).join("<br>")||"—"}</td><td><span class="badge ${leader.is_active?"":"off"}">${leader.is_active?"Active":"Suspended"}</span></td><td>${date(leader.last_activity)}</td><td><div class="actions"><button class="secondary" onclick="editLeader(${Number(leader.id)})">Edit</button><button class="secondary" onclick="resetLeaderPassword(${Number(leader.id)})">Reset password</button><button class="${leader.is_active?"danger":"secondary"}" onclick="toggleLeader(${Number(leader.id)},${!leader.is_active})">${leader.is_active?"Suspend":"Activate"}</button></div></td></tr>`).join("");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>Invite a club leader</h2><p>Invitations expire after seven days. Copy the one-time link and send it securely to the leader.</p></div></header><div class="panel-body"><form id="inviteForm" class="form-grid"><label class="field">First name<input name="firstName" required maxlength="80"></label><label class="field">Last name<input name="lastName" required maxlength="80"></label><label class="field">Email address<input name="email" type="email" required maxlength="254"></label><label class="field">Phone number<input name="phone" type="tel" maxlength="30"></label><label class="field full">Assign club(s)<select name="clubIds" multiple required>${options}</select><small>Hold Ctrl (Windows) or Command (Mac) to select several clubs.</small></label><div class="field full"><button class="primary" type="submit">Create invitation</button><p class="message" id="inviteMessage" role="status"></p><div id="inviteLink" class="output-link"></div></div></form><div id="leaderEditor"></div></div></section><section class="panel" style="margin-top:15px"><header class="panel-head"><div><h2>Leader accounts</h2><p>Profile, club assignments, account status and last activity.</p></div></header><div class="table-wrap"><table><thead><tr><th>Leader</th><th>Assigned clubs</th><th>Status</th><th>Last activity</th><th>Actions</th></tr></thead><tbody>${rows||'<tr><td class="empty" colspan="5">No leaders have accepted invitations yet.</td></tr>'}</tbody></table></div></section>`, "Leaders");
+      document.querySelector("#inviteForm").addEventListener("submit", createInvitation);
+    }
+    async function createInvitation(event) {
+      event.preventDefault(); const form=event.currentTarget; const values=Object.fromEntries(new FormData(form));
+      values.clubIds=Array.from(form.elements.clubIds.selectedOptions).map(option=>Number(option.value));
+      const message=document.querySelector("#inviteMessage"); message.textContent="Creating secure invitation…";
+      try {
+        const result=await api("/api/admin/leaders/invitations",json("POST",values));
+        const inviteUrl=new URL(result.invitationPath,location.origin).href;
+        const host=document.querySelector("#inviteLink"); host.classList.add("show"); host.innerHTML=`Invitation link (copy it now; it is only shown once):<br><a href="${e(inviteUrl)}">${e(inviteUrl)}</a><br><button class="secondary" style="margin-top:8px" data-copy-link="${e(inviteUrl)}">Copy invitation link</button>`;
+        host.querySelector("[data-copy-link]").addEventListener("click",event=>copyText(event.currentTarget.dataset.copyLink));
+        message.textContent=`Expires ${date(result.expiresAt)}.`;
+        form.reset();
+      } catch(error){message.textContent=error.message;}
+    }
+    async function copyText(value){try{await navigator.clipboard.writeText(value);}catch(_error){showError("Clipboard access is unavailable; select and copy the link manually.");}}
+    function editLeader(id) {
+      const leader=state.leaders.find(item=>Number(item.id)===id); if(!leader)return;
+      const host=document.querySelector("#leaderEditor"); const clubs=state.metadata.clubs;
+      host.innerHTML=`<section class="panel" style="margin-top:16px;padding:16px"><h3>Edit ${e(leader.name)}</h3><form id="editLeaderForm" class="form-grid"><label class="field">First name<input name="firstName" value="${e(leader.first_name||"")}" required></label><label class="field">Last name<input name="lastName" value="${e(leader.last_name||"")}" required></label><label class="field">Phone<input name="phone" value="${e(leader.phone||"")}"></label><label class="field">Assigned clubs<select name="clubIds" multiple required>${clubs.map(club=>`<option value="${Number(club.id)}" ${(leader.clubs||[]).some(item=>Number(item.id)===Number(club.id))?"selected":""}>${e(club.name)} · ${e(club.code)}</option>`).join("")}</select></label><div class="field full actions"><button class="primary">Save profile and clubs</button><button type="button" class="secondary" onclick="document.querySelector('#leaderEditor').replaceChildren()">Cancel</button><span class="message" id="editLeaderMessage"></span></div></form></section>`;
+      document.querySelector("#editLeaderForm").addEventListener("submit",async event=>{event.preventDefault();const form=event.currentTarget;const values=Object.fromEntries(new FormData(form));values.clubIds=Array.from(form.elements.clubIds.selectedOptions).map(option=>Number(option.value));try{await api(`/api/admin/leaders/${id}`,json("PUT",values));await leadersSection();}catch(error){document.querySelector("#editLeaderMessage").textContent=error.message;}});
+    }
+    async function toggleLeader(id,isActive){try{await api(`/api/admin/leaders/${id}`,json("PATCH",{isActive}));await leadersSection();}catch(error){showError(error.message);}}
+    async function resetLeaderPassword(id){
+      try{const result=await api(`/api/admin/leaders/${id}/password-reset`,{method:"POST"});const resetUrl=new URL(result.resetPath,location.origin).href;const host=document.querySelector("#inviteLink");host.classList.add("show");host.innerHTML=`One-time password reset link (expires ${date(result.expiresAt)}):<br><a href="${e(resetUrl)}">${e(resetUrl)}</a><br><button class="secondary" style="margin-top:8px" data-copy-link="${e(resetUrl)}">Copy reset link</button>`;host.querySelector("[data-copy-link]").addEventListener("click",event=>copyText(event.currentTarget.dataset.copyLink));}
+      catch(error){showError(error.message);}
+    }
+    async function documentsSection(){
+      const docs=await api("/api/admin/documents");const rows=docs.map(doc=>`<tr><td><strong>${e(doc.child_name)}</strong></td><td>${e(doc.club_name)}</td><td>${e(doc.document_type)}</td><td>${e(doc.document_number||"—")}</td><td>${doc.storage_key?`<a target="_blank" rel="noopener" href="/api/portal/registrations/${Number(doc.registration_id)}/files/${encodeURIComponent(doc.storage_key)}">Open securely</a>`:"Number only"}</td><td>${date(doc.created_at)}</td></tr>`).join("");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>Private child documents</h2><p>Only Super Admin can review the platform-wide document register.</p></div></header><div class="table-wrap"><table><thead><tr><th>Child</th><th>Club</th><th>Type</th><th>Number</th><th>Private file</th><th>Added</th></tr></thead><tbody>${rows||'<tr><td class="empty" colspan="6">No documents registered.</td></tr>'}</tbody></table></div></section>`,"Documents");
+    }
+    async function auditSection(){
+      const logs=await api("/api/admin/audit-logs?limit=100");const rows=logs.map(item=>`<tr><td>${date(item.created_at)}</td><td><strong>${e(item.actor_name||"System")}</strong><br><small>${e(item.actor_email||"")}</small></td><td>${e(item.action)}</td><td>${e(item.target_type)} ${e(item.target_id)}</td><td>${e(JSON.stringify(item.details||{}))}</td></tr>`).join("");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>Audit log</h2><p>Recent sign-ins, invitations, account changes and child registrations.</p></div></header><div class="table-wrap"><table><thead><tr><th>When</th><th>Actor</th><th>Activity</th><th>Target</th><th>Details</th></tr></thead><tbody>${rows||'<tr><td class="empty" colspan="5">No activity recorded yet.</td></tr>'}</tbody></table></div></section>`,"Audit logs");
+    }
+    async function myClubSection(){
+      const clubs=await api("/api/portal/my-club");const cards=clubs.map(club=>`<article class="club-card"><strong>${e(club.name)} · ${e(club.code)}</strong><small>${e(club.region||"Region not specified")} · ${Number(club.children_registered)} registered children · ${Number(club.registered_today)} registered today · ${club.is_active?"Active":"Inactive"}</small></article>`).join("");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>My Club</h2><p>Club assignments and child registration totals.</p></div></header><div class="panel-body">${cards||'<p class="empty">No clubs are assigned to your account. Contact a Super Admin.</p>'}</div></section>`,"My Club");
+    }
+    async function profileSection(){
+      const data=await api("/api/portal/profile");const profile=data.profile||{};const first=profile.first_name||(data.name||"").split(/\s+/)[0]||"";const last=profile.last_name||(data.name||"").split(/\s+/).slice(1).join(" ");
+      shell(`<section class="panel"><header class="panel-head"><div><h2>My Profile</h2><p>Update your leader contact details. Contact a Super Admin to change account email or access.</p></div></header><div class="panel-body"><form id="profileForm" class="form-grid"><label class="field">First name<input name="firstName" value="${e(first)}" required maxlength="80"></label><label class="field">Last name<input name="lastName" value="${e(last)}" required maxlength="80"></label><label class="field">Email address<input value="${e(data.email)}" disabled></label><label class="field">Phone number<input name="phone" value="${e(profile.phone||"")}" maxlength="30"></label><div class="field full"><button class="primary">Save profile</button><p id="profileMessage" class="message"></p></div></form><p><strong>Role:</strong> ${roleTitle(data.role)} · <strong>Clubs:</strong> ${data.clubs.map(club=>e(`${club.name} (${club.code})`)).join(", ")||"All clubs"}</p></div></section>`,"My Profile");
+      document.querySelector("#profileForm").addEventListener("submit",async event=>{event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));try{await api("/api/portal/profile",json("PUT",values));document.querySelector("#profileMessage").textContent="Profile saved.";const session=await api("/api/session");state.user=session.user;}catch(error){document.querySelector("#profileMessage").textContent=error.message;}});
+    }
+    async function openSection(key){
+      state.section=key;state.page=key==="children"||key==="reports"?state.page:1;
+      try{
+        if(key==="dashboard")return await dashboardSection();
+        if(key==="children"||key==="reports")return await childrenSection(key);
+        if(key==="leaders"&&state.user.role==="super_admin")return await leadersSection();
+        if(key==="clubs"&&state.user.role==="super_admin")return await clubsSection();
+        if(key==="ranks"&&state.user.role==="super_admin")return await ranksSection();
+        if(key==="documents"&&state.user.role==="super_admin")return await documentsSection();
+        if(key==="audit"&&state.user.role==="super_admin")return await auditSection();
+        if(key==="my-club"&&state.user.role==="club_leader")return await myClubSection();
+        if(key==="register")return location.assign("/register");
+        if(key==="profile")return await profileSection();
+        throw new Error("You do not have permission to view this section.");
+      }catch(error){shell(`<section class="panel empty">${e(error.message)}</section>`,key);}
+    }
+    async function logout(){
+      try{await api("/api/logout",{method:"POST"});state.user=null;loginView();}
+      catch(error){showError(error.message);}
+    }
+    async function render(){
+      try{
+        const session=await api("/api/session");state.user=session.user;
+        if(!state.user)return loginView();
+        state.metadata=await api("/api/portal/metadata");
+        await openSection(state.section||"dashboard");
+      }catch(error){app.innerHTML=`<section style="max-width:520px;margin:10vh auto;padding:24px"><h1>Portal unavailable</h1><p>${e(error.message)}</p><a href="/">Return to website</a></section>`;}
+    }
+    render();
+  </script>
+</body>
+</html>

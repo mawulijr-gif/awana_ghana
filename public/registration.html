@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Register a child for an Awana programme in Ghana.">
-  <title>Register a Child | Awana Clubs Ghana</title>
+  <meta name="description" content="Authorised Awana club leaders can register a child.">
+  <title>Register a Child | Awana Clubs Ghana Leader Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,14 +13,15 @@
 <body>
   <header class="container registration-header">
     <a href="/" aria-label="Awana Clubs Ghana home"><img src="/logo.png" alt="Awana Clubs Ghana"></a>
-    <a href="/">Back to website</a>
+    <a href="/dashboard">Back to leader dashboard</a>
   </header>
   <main>
     <section class="registration-hero">
       <div class="container">
         <p class="eyebrow light">Awana Clubs Ghana</p>
         <h1>Register a child</h1>
-        <p>A parent or guardian can share a child’s details, rank and preferred club so our team can follow up about participation. Submit a separate form for each child.</p>
+        <p>Use this secure form to register a child in a club assigned to your leader account. Submit one form for each child.</p>
+        <p id="leaderSession" class="registration-session" aria-live="polite"></p>
       </div>
     </section>
     <section class="registration-main">
@@ -28,30 +29,34 @@
         <form id="registrationForm" class="contact-form registration-form">
           <h2>Child details</h2>
           <label>Child’s full name
-            <input name="childName" type="text" autocomplete="name" maxlength="160" required>
+            <input name="childName" type="text" autocomplete="off" maxlength="160" required>
           </label>
           <div class="form-row">
             <label>Date of birth
               <input id="childDateOfBirth" name="childDateOfBirth" type="date" required>
             </label>
-            <label>Rank
-              <select name="rank" required>
-                <option value="">Choose a rank</option>
-                <option value="Hiker">Hiker</option>
-                <option value="Skipper">Skipper</option>
-                <option value="Climber">Climber</option>
-                <option value="Dove">Dove</option>
-                <option value="Eagle">Eagle</option>
-                <option value="Deer">Deer</option>
-                <option value="Lion">Lion</option>
-                <option value="JV">JV</option>
+            <label>Gender
+              <select name="gender" required>
+                <option value="">Choose gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
               </select>
             </label>
           </div>
-          <label>Club name
-            <input id="clubName" name="clubName" type="text" maxlength="200" placeholder="Enter the Awana club name" required>
-          </label>
-          <p class="registration-field-note">If you are unsure of the club name, enter “Not sure yet” and we’ll follow up.</p>
+          <div class="form-row">
+            <label>Rank
+              <select id="childRank" name="rank" required>
+                <option value="">Choose a rank</option>
+              </select>
+            </label>
+            <label>Awana club
+              <select id="clubName" name="clubId" required>
+                <option value="">Loading your assigned clubs…</option>
+              </select>
+            </label>
+          </div>
           <label>Identification type
             <select id="childIdentificationType" name="childIdentificationType">
               <option value="">Choose an identification type (optional)</option>
@@ -83,9 +88,14 @@
           <div class="photo-preview-list" id="photoPreviewList"></div>
 
           <h2>Parent or guardian details</h2>
-          <label>Parent or guardian’s full name
-            <input name="guardianName" type="text" autocomplete="name" maxlength="160" required>
-          </label>
+          <div class="form-row">
+            <label>Guardian first name
+              <input name="guardianFirstName" type="text" autocomplete="given-name" maxlength="80" required>
+            </label>
+            <label>Guardian last name
+              <input name="guardianLastName" type="text" autocomplete="family-name" maxlength="80" required>
+            </label>
+          </div>
           <div class="form-row">
             <label>Relationship to the child
               <select name="guardianRelationship" required>
@@ -101,18 +111,18 @@
             </label>
           </div>
           <div class="form-row">
-            <label>Email address <span>(optional)</span>
-              <input name="guardianEmail" type="email" autocomplete="email" maxlength="254">
+            <label>Email address
+              <input name="guardianEmail" type="email" autocomplete="email" maxlength="254" required>
             </label>
             <label>Town or region
               <input name="location" type="text" autocomplete="address-level1" maxlength="160" required>
             </label>
           </div>
 
-          <p class="registration-privacy">We use these details, optional photos and identification information to follow up about Awana participation and connect your family with a local club. Submitted information and files are stored privately and are available only to authorised administrators in the website dashboard.</p>
+          <p class="registration-privacy">Registration details, consent and uploaded documents are stored privately and available only to authorised Awana leaders assigned to this club and Super Admins.</p>
           <label class="registration-consent">
             <input name="consent" type="checkbox" value="true" required>
-            <span>I am the child’s parent or legal guardian, or am authorised to provide these details, photos and identification information, and I consent to Awana Clubs Ghana using them to follow up about this registration.</span>
+            <span>I confirm that the child’s parent or legal guardian has consented to this registration and to the secure handling of the child’s information and documents.</span>
           </label>
           <button class="registration-submit" type="submit">Submit registration <span aria-hidden="true">→</span></button>
           <p class="form-message" role="status" aria-live="polite"></p>

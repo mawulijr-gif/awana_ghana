@@ -314,4 +314,38 @@ document.addEventListener("submit", event => {
 const dateOfBirthInput = document.querySelector("#childDateOfBirth");
 if (dateOfBirthInput) dateOfBirthInput.max = new Date().toISOString().slice(0, 10);
 
+async function initializeLeaderRegistration() {
+  const form = document.querySelector("#registrationForm");
+  if (!form) return;
+  const message = form.querySelector(".form-message");
+  const submitButton = form.querySelector('button[type="submit"]');
+  try {
+    const sessionResponse = await fetch("/api/session");
+    const sessionData = await sessionResponse.json();
+    if (!sessionResponse.ok || !sessionData.user) {
+      location.replace("/login?next=register");
+      return;
+    }
+    const metadataResponse = await fetch("/api/portal/metadata");
+    const metadata = await metadataResponse.json();
+    if (!metadataResponse.ok) throw new Error(metadata.error || "Could not load your club assignments.");
+    const clubSelect = document.querySelector("#clubName");
+    const rankSelect = document.querySelector("#childRank");
+    clubSelect.innerHTML = '<option value="">Choose your club</option>' +
+      metadata.clubs.map(club => `<option value="${Number(club.id)}">${escapeHtml(club.name)} - ${escapeHtml(club.code)}</option>`).join("");
+    rankSelect.innerHTML = '<option value="">Choose a rank</option>' +
+      metadata.ranks.map(rank => `<option value="${escapeHtml(rank.name)}">${escapeHtml(rank.name)}${rank.age_group ? ` · ${escapeHtml(rank.age_group)}` : ""}</option>`).join("");
+    if (!metadata.clubs.length) {
+      message.textContent = "Your account has no active club assignments. Ask a Super Admin to assign your club.";
+      submitButton.disabled = true;
+    }
+    const leaderSession = document.querySelector("#leaderSession");
+    if (leaderSession) leaderSession.textContent = `Signed in as ${sessionData.user.name} · ${sessionData.user.role === "super_admin" ? "Super Admin" : "Club Leader"}`;
+  } catch (error) {
+    message.textContent = error.message;
+    submitButton.disabled = true;
+  }
+}
+
+initializeLeaderRegistration();
 loadManagedContent();

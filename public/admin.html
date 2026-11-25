@@ -271,10 +271,12 @@
       button.disabled = true;
       button.textContent = "Signing in…";
       try {
+        const values = Object.fromEntries(new FormData(form));
+        values.rememberMe = form.elements.rememberMe?.checked || false;
         await request("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(Object.fromEntries(new FormData(form)))
+          body: JSON.stringify(values)
         });
         await render();
       } catch (reason) {
@@ -325,14 +327,15 @@
             <div class="login-card">
               <a href="/"><img class="mobile-logo" src="/logo.png" alt="Awana Clubs Ghana"></a>
               <h2>Welcome back</h2>
-              <p class="login-subtitle">Sign in with your administrator account to continue.</p>
+              <p class="login-subtitle">Sign in with your authorised leader account to continue.</p>
               <form onsubmit="login(event)">
                 <label>Email address<input name="email" type="email" autocomplete="username" placeholder="name@organization.org" required></label>
                 <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></label>
+                <label class="cms-check"><input name="rememberMe" type="checkbox"> Remember me on this device</label>
                 <button class="login-submit" type="submit">Sign in to dashboard</button>
                 <p class="login-error" role="alert"></p>
               </form>
-              <p class="login-security">This area is for authorised Awana Clubs Ghana administrators only.</p>
+              <p class="login-security">Accounts are invitation-only. <a href="/login">Open the leader portal</a> or contact a Super Admin if you need a password reset.</p>
             </div>
           </section>
         </div>`;
@@ -895,6 +898,10 @@
         const user = await session();
         if (!user) {
           loginView();
+          return;
+        }
+        if (user.role !== "super_admin") {
+          window.location.replace("/dashboard");
           return;
         }
         const data = await request("/api/admin/overview");
