@@ -443,10 +443,10 @@ app.post("/api/registrations", requireLeader, (req, res, next) => {
       childDob <= new Date().toISOString().slice(0, 10);
     const reject = message => res.status(400).json({ error: message });
 
-    if (!childName || !validDob || !["male", "female", "other", "prefer_not_to_say"].includes(gender) ||
+    if (!childName || !validDob || !["male", "female"].includes(gender) ||
         !rank || !Number.isSafeInteger(clubId) || clubId < 1 ||
         !guardianFirstName || !guardianLastName ||
-        !validRelationships.has(guardianRelationship) || !guardianPhone || !guardianEmail || !location ||
+        !validRelationships.has(guardianRelationship) || !guardianPhone || !location ||
         body.consent !== "true" && body.consent !== true) {
       return reject("Complete the required fields and confirm parent or guardian consent.");
     }
