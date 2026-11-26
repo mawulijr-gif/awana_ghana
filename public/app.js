@@ -90,7 +90,13 @@ async function loadManagedContent() {
     });
     document.querySelectorAll("[data-cms-image]").forEach(element => {
       const value = settings[element.dataset.cmsImage];
-      if (typeof value === "string" && value) element.src = value;
+      if (typeof value === "string" && value.trim()) {
+        element.src = value.trim();
+        if (element.classList.contains("home-managed-image")) element.hidden = false;
+      } else if (element.classList.contains("home-managed-image")) {
+        element.removeAttribute("src");
+        element.hidden = true;
+      }
     });
     document.querySelectorAll("[data-cms-href]").forEach(element => {
       const value = settings[element.dataset.cmsHref];
