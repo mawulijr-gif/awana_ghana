@@ -78,6 +78,7 @@ function escapeHtml(value) {
 let mediaGalleryUrls = [];
 let mediaLightbox;
 let mediaLightboxTrigger;
+const HOME_MEDIA_PREVIEW_COUNT = 5;
 
 function mediaDownloadUrl(imageUrl) {
   const filename = new URL(imageUrl, window.location.href).pathname.split("/").pop();
@@ -216,9 +217,13 @@ function renderMediaGallery(images) {
     return;
   }
 
-  [homeGallery, mediaPageGallery].filter(Boolean).forEach(gallery => {
-    gallery.replaceChildren(...images.map((url, index) => createMediaCard(url, index, images.length)));
-  });
+  if (homeGallery) {
+    const previewImages = images.slice(0, HOME_MEDIA_PREVIEW_COUNT);
+    homeGallery.replaceChildren(...previewImages.map((url, index) => createMediaCard(url, index, images.length)));
+  }
+  if (mediaPageGallery) {
+    mediaPageGallery.replaceChildren(...images.map((url, index) => createMediaCard(url, index, images.length)));
+  }
 }
 
 async function loadMediaGallery() {
