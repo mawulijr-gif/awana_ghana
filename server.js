@@ -7,6 +7,7 @@ const { Pool } = require("pg");
 const multer = require("multer");
 const { createClient } = require("@supabase/supabase-js");
 const { validateRegistrationIdentification } = require("./lib/registration-identification");
+const { isValidImageUrl } = require("./lib/image-url");
 const { createOneTimeToken, hashOneTimeToken, normalizeEmail } = require("./lib/leader-security");
 
 const app = express();
@@ -1277,16 +1278,6 @@ function hasValidResourceSignature(file) {
     return header[0] === 0x50 && header[1] === 0x4b && header[2] === 0x03 && header[3] === 0x04;
   }
   return false;
-}
-
-function isValidImageUrl(value) {
-  if (!value) return true;
-  if (/^\/uploads\/[a-zA-Z0-9._-]+$/.test(value)) return true;
-  try {
-    return ["http:", "https:"].includes(new URL(value).protocol);
-  } catch (_error) {
-    return false;
-  }
 }
 
 function isValidLinkUrl(value) {
