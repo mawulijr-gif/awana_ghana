@@ -347,6 +347,7 @@ app.get("/registration.html", (req, res) => {
 app.get("/accept-invitation", (_req, res) => res.sendFile(path.join(__dirname, "public", "accept-invitation.html")));
 app.get("/reset-password", (_req, res) => res.sendFile(path.join(__dirname, "public", "reset-password.html")));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/images", express.static(path.join(__dirname, "images")));
 app.get("/api/events", async (_req, res) => {
   const { rows } = await db.query("SELECT * FROM cms_items WHERE type = 'events' AND published = 1 ORDER BY event_date, sort_order, id LIMIT 6");
   res.json(rows);

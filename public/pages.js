@@ -123,7 +123,7 @@ const pageData = {
 };
 
 function renderCards(cards = []) {
-  return `<div class="page-card-grid">${cards.map(([title, text, href]) => `<article class="page-card"><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p>${href ? `<a class="text-link" href="${escapeHtml(href)}">Learn more <span>→</span></a>` : ""}</article>`).join("")}</div>`;
+  return `<div class="page-card-grid">${cards.map(([title, text, href, imageUrl]) => `<article class="page-card">${imageUrl ? `<a class="page-card-image-link" href="${escapeHtml(href || imageUrl)}"${href && /^https?:\/\//i.test(href) ? ' target="_blank" rel="noopener noreferrer"' : ""}><img class="page-card-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"></a>` : ""}<h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p>${href ? `<a class="text-link" href="${escapeHtml(href)}">Learn more <span>→</span></a>` : ""}</article>`).join("")}</div>`;
 }
 
 function escapeHtml(value) {
@@ -169,6 +169,7 @@ async function renderPage() {
         title: item.title,
         intro: item.summary,
         heading: sections.shift() || item.title,
+        image_url: item.image_url,
         paragraphs: sections
       };
     }
@@ -197,7 +198,12 @@ async function renderPage() {
   } else if (slug === "resources") {
     managedCards = allItems.filter(item => item.type === "resources").map(item => [item.title, item.summary, item.link_url || ""]);
   } else if (slug === "events") {
-    managedCards = allItems.filter(item => item.type === "events").map(item => [item.title, [item.event_date, item.event_time, item.venue].filter(Boolean).join(" · ") + (item.summary ? ` — ${item.summary}` : ""), item.link_url || ""]);
+    managedCards = allItems.filter(item => item.type === "events").map(item => [
+      item.title,
+      [item.event_date, item.event_time, item.venue].filter(Boolean).join(" · ") + (item.summary ? ` — ${item.summary}` : ""),
+      item.link_url || "",
+      item.image_url
+    ]);
   } else if (slug === "products") {
     managedCards = allItems.filter(item => item.type === "products").map(item => [item.title, item.summary, item.link_url || ""]);
   } else if (slug === "churches") {
