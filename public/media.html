@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#175c51">
+  <meta name="description" content="Explore and download photos from Awana Clubs Ghana.">
+  <title>Media Gallery | Awana Clubs Ghana</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="container topbar-inner">
+      <span data-cms-key="brand.tagline">Building faith. Inspiring purpose. Transforming generations.</span>
+      <div class="top-links"><a href="/contact">Contact</a><a href="/login">Leader Login</a></div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="container nav-wrap">
+      <a class="brand" href="/" aria-label="Awana Clubs Ghana home">
+        <img src="/logo.png" alt="Awana Clubs Ghana" data-cms-image="brand.logo">
+      </a>
+      <button class="menu-button" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
+      <nav class="nav" aria-label="Main navigation">
+        <a href="/about" data-cms-href="nav.about.href" data-cms-key="nav.about.label">About</a>
+        <a href="/programmes" data-cms-href="nav.programmes.href" data-cms-key="nav.programmes.label">Programmes</a>
+        <a href="/how-it-works" data-cms-href="nav.how.href" data-cms-key="nav.how.label">How it works</a>
+        <a href="/leadership" data-cms-href="nav.leaders.href" data-cms-key="nav.leaders.label">For Leaders</a>
+        <a href="/parents" data-cms-href="nav.families.href" data-cms-key="nav.families.label">For Families</a>
+        <a href="/resources" data-cms-href="nav.resources.href" data-cms-key="nav.resources.label">Resources</a>
+        <a href="/media" aria-current="page">Media</a>
+        <a href="/events" data-cms-href="nav.events.href" data-cms-key="nav.events.label">Events</a>
+        <a class="nav-cta" href="/getting-started" data-cms-href="nav.cta.href" data-cms-key="nav.cta.label">Get involved</a>
+        <a class="nav-cta mobile-register-link" href="/login">Leader Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="media-page">
+    <section class="media-page-hero">
+      <div class="container">
+        <p class="eyebrow light">Our community</p>
+        <h1>Moments from our clubs.</h1>
+        <p>Celebrate the people, places and memories that make Awana Clubs Ghana special. Open a photo to see it up close or download it to keep.</p>
+        <a class="button button-yellow" href="#mediaPageGallery">Explore the gallery <span aria-hidden="true">↓</span></a>
+      </div>
+    </section>
+
+    <section class="media-page-content" id="mediaPageGallery" aria-labelledby="mediaPageTitle">
+      <div class="container">
+        <div class="media-page-heading">
+          <div>
+            <p class="eyebrow">Photo gallery</p>
+            <h2 id="mediaPageTitle">Stories in every frame.</h2>
+          </div>
+          <p id="mediaPageStatus" role="status" aria-live="polite">Loading photos…</p>
+        </div>
+        <div class="media-gallery-grid media-page-grid" id="mediaPageGrid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div><a href="/"><img src="/logo.png" alt="Awana Clubs Ghana" data-cms-image="brand.logo"></a><p data-cms-key="footer.description">Equipping churches to disciple the next generation in Ghana.</p></div>
+      <div><strong>Explore</strong><a href="/about">About us</a><a href="/programmes">Programmes</a><a href="/how-it-works">How it works</a><a href="/getting-started">Getting started</a></div>
+      <div><strong>Connect</strong><a href="/leader-hub">Leader hub</a><a href="/parents">Parents &amp; family</a><a href="/events">Events &amp; training</a><a href="/churches">Church finder</a></div>
+      <div><strong>Follow</strong><div class="social"><a href="#" data-cms-href="social.facebook" aria-label="Facebook">f</a><a href="#" data-cms-href="social.instagram" aria-label="Instagram">◎</a><a href="#" data-cms-href="social.youtube" aria-label="YouTube">▶</a></div></div>
+    </div>
+    <div class="container footer-bottom"><span>© 2026 Awana Clubs Ghana. All rights reserved.</span><span><a href="/faqs">FAQs &amp; support</a> <a href="/products">Products</a> <a href="/contact">Contact</a></span></div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -335,6 +335,7 @@ app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "public", "index.h
 app.get("/login", (_req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));
 app.get("/dashboard", (_req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));
 app.get("/leader", (_req, res) => res.sendFile(path.join(__dirname, "public", "portal.html")));
+app.get("/media", (_req, res) => res.sendFile(path.join(__dirname, "public", "media.html")));
 app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 app.get("/admin.html", (_req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 app.get("/register", (req, res) => {
@@ -362,6 +363,21 @@ app.get("/api/site/media", async (_req, res) => {
   if (error) throw error;
   const images = getGalleryImageFilenames(files).map(publicAssetUrl);
   res.json(images);
+});
+app.get("/api/site/media/:filename/download", async (req, res) => {
+  const { filename } = req.params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpe?g|png|gif|webp)$/i.test(filename)) {
+    return res.status(400).json({ error: "Invalid image filename." });
+  }
+  const { data, error } = await siteAssets.download(filename);
+  if (error) {
+    if (String(error.statusCode) === "404") return res.status(404).json({ error: "Image not found." });
+    throw error;
+  }
+  res.type(path.extname(filename));
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.send(Buffer.from(await data.arrayBuffer()));
 });
 app.get("/api/site/content", async (_req, res) => {
   const [settingsResult, itemsResult] = await Promise.all([

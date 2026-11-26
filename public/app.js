@@ -75,45 +75,162 @@ function escapeHtml(value) {
   })[char]);
 }
 
+let mediaGalleryUrls = [];
+let mediaLightbox;
+let mediaLightboxTrigger;
+
+function mediaDownloadUrl(imageUrl) {
+  const filename = new URL(imageUrl, window.location.href).pathname.split("/").pop();
+  return `/api/site/media/${encodeURIComponent(filename)}/download`;
+}
+
+function createMediaCard(imageUrl, index, imageCount) {
+  const figure = document.createElement("figure");
+  figure.className = "media-card";
+  figure.style.animationDelay = `${Math.min(index, 12) * 35}ms`;
+
+  const openButton = document.createElement("button");
+  openButton.className = "media-open";
+  openButton.type = "button";
+  openButton.setAttribute("aria-label", `View photo ${index + 1} of ${imageCount}`);
+  const image = document.createElement("img");
+  image.src = imageUrl;
+  image.alt = `Awana Clubs Ghana community photo ${index + 1}`;
+  image.loading = "lazy";
+  image.decoding = "async";
+  const viewLabel = document.createElement("span");
+  viewLabel.className = "media-view-label";
+  viewLabel.textContent = "View photo";
+  openButton.append(image, viewLabel);
+  openButton.addEventListener("click", () => openMediaLightbox(index, openButton));
+
+  const download = document.createElement("a");
+  download.className = "media-download";
+  download.href = mediaDownloadUrl(imageUrl);
+  download.download = new URL(imageUrl, window.location.href).pathname.split("/").pop();
+  download.setAttribute("aria-label", `Download photo ${index + 1}`);
+  download.innerHTML = '<span aria-hidden="true">↓</span> Download';
+
+  figure.append(openButton, download);
+  return figure;
+}
+
+function createMediaLightbox() {
+  const dialog = document.createElement("dialog");
+  dialog.className = "media-lightbox";
+  dialog.setAttribute("aria-label", "Photo viewer");
+  dialog.innerHTML = `
+    <button class="media-lightbox-close" type="button" aria-label="Close photo viewer">×</button>
+    <button class="media-lightbox-step media-lightbox-previous" type="button" aria-label="Previous photo">‹</button>
+    <figure class="media-lightbox-frame"><img class="media-lightbox-image" alt=""></figure>
+    <button class="media-lightbox-step media-lightbox-next" type="button" aria-label="Next photo">›</button>
+    <div class="media-lightbox-footer">
+      <span class="media-lightbox-count"></span>
+      <a class="media-lightbox-download" href="#"><span aria-hidden="true">↓</span> Download photo</a>
+    </div>`;
+  document.body.append(dialog);
+
+  dialog.querySelector(".media-lightbox-close").addEventListener("click", () => dialog.close());
+  dialog.querySelector(".media-lightbox-previous").addEventListener("click", () => stepMediaLightbox(-1));
+  dialog.querySelector(".media-lightbox-next").addEventListener("click", () => stepMediaLightbox(1));
+  dialog.querySelector(".media-lightbox-download").addEventListener("click", event => {
+    if (!mediaGalleryUrls.length) event.preventDefault();
+  });
+  dialog.addEventListener("click", event => {
+    if (event.target === dialog) dialog.close();
+  });
+  dialog.addEventListener("keydown", event => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      stepMediaLightbox(-1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      stepMediaLightbox(1);
+    }
+  });
+  dialog.addEventListener("close", () => mediaLightboxTrigger?.focus());
+  return dialog;
+}
+
+function updateMediaLightbox(index) {
+  const imageUrl = mediaGalleryUrls[index];
+  mediaLightbox.dataset.index = String(index);
+  const image = mediaLightbox.querySelector(".media-lightbox-image");
+  image.src = imageUrl;
+  image.alt = `Awana Clubs Ghana community photo ${index + 1}`;
+  mediaLightbox.querySelector(".media-lightbox-count").textContent = `${index + 1} / ${mediaGalleryUrls.length}`;
+  const download = mediaLightbox.querySelector(".media-lightbox-download");
+  download.href = mediaDownloadUrl(imageUrl);
+  download.download = new URL(imageUrl, window.location.href).pathname.split("/").pop();
+  mediaLightbox.querySelector(".media-lightbox-previous").disabled = mediaGalleryUrls.length < 2;
+  mediaLightbox.querySelector(".media-lightbox-next").disabled = mediaGalleryUrls.length < 2;
+}
+
+function openMediaLightbox(index, trigger) {
+  mediaLightbox = mediaLightbox || createMediaLightbox();
+  mediaLightboxTrigger = trigger;
+  updateMediaLightbox(index);
+  mediaLightbox.showModal();
+}
+
+function stepMediaLightbox(direction) {
+  if (!mediaLightbox || !mediaGalleryUrls.length) return;
+  const currentIndex = Number(mediaLightbox.dataset.index);
+  const nextIndex = (currentIndex + direction + mediaGalleryUrls.length) % mediaGalleryUrls.length;
+  updateMediaLightbox(nextIndex);
+}
+
 function renderMediaGallery(images) {
-  const gallery = document.querySelector("#mediaGalleryGrid");
-  if (!gallery) return;
+  const mediaPageStatus = document.querySelector("#mediaPageStatus");
   if (!Array.isArray(images)) {
     console.error("Invalid homepage media gallery response.");
+    if (mediaPageStatus) mediaPageStatus.textContent = "The gallery could not be displayed.";
     return;
   }
 
   if (images.some(url => typeof url !== "string" || !url.trim())) {
     console.error("Invalid image URL in homepage media gallery response.");
-    return;
-  }
-  const placeholderCount = Math.max(gallery.querySelectorAll("figure").length, 16);
-  gallery.replaceChildren();
-  if (!images.length) {
-    for (let index = 0; index < placeholderCount; index += 1) {
-      const placeholder = document.createElement("figure");
-      placeholder.setAttribute("aria-hidden", "true");
-      gallery.append(placeholder);
-    }
+    if (mediaPageStatus) mediaPageStatus.textContent = "The gallery could not be displayed.";
     return;
   }
 
-  images.forEach(url => {
-    const slot = document.createElement("figure");
-    const image = document.createElement("img");
-    image.src = url;
-    image.alt = "Awana Clubs Ghana community photo";
-    image.loading = "lazy";
-    image.decoding = "async";
-    slot.append(image);
-    gallery.append(slot);
+  mediaGalleryUrls = images;
+  const homeGallery = document.querySelector("#mediaGalleryGrid");
+  const mediaPageGallery = document.querySelector("#mediaPageGrid");
+  if (mediaPageStatus) {
+    mediaPageStatus.textContent = `${images.length} ${images.length === 1 ? "photo" : "photos"} available to view and download`;
+  }
+
+  if (!images.length) {
+    if (homeGallery) {
+      const placeholderCount = Math.max(homeGallery.querySelectorAll("figure").length, 16);
+      homeGallery.replaceChildren();
+      for (let index = 0; index < placeholderCount; index += 1) {
+        const placeholder = document.createElement("figure");
+        placeholder.setAttribute("aria-hidden", "true");
+        homeGallery.append(placeholder);
+      }
+    }
+    if (mediaPageGallery) mediaPageGallery.replaceChildren();
+    if (mediaPageStatus) mediaPageStatus.textContent = "No photos have been added yet.";
+    return;
+  }
+
+  [homeGallery, mediaPageGallery].filter(Boolean).forEach(gallery => {
+    gallery.replaceChildren(...images.map((url, index) => createMediaCard(url, index, images.length)));
   });
 }
 
 async function loadMediaGallery() {
-  const response = await fetch("/api/site/media");
-  if (!response.ok) throw new Error("Unable to load the media gallery.");
-  renderMediaGallery(await response.json());
+  try {
+    const response = await fetch("/api/site/media");
+    if (!response.ok) throw new Error("Unable to load the media gallery.");
+    renderMediaGallery(await response.json());
+  } catch (error) {
+    const status = document.querySelector("#mediaPageStatus");
+    if (status) status.textContent = "Photos could not be loaded. Please try again later.";
+    throw error;
+  }
 }
 
 async function loadManagedContent() {
