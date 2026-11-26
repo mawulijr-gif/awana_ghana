@@ -126,6 +126,74 @@ function renderCards(cards = []) {
   return `<div class="page-card-grid">${cards.map(([title, text, href, imageUrl]) => `<article class="page-card">${imageUrl ? `<a class="page-card-image-link" href="${escapeHtml(href || imageUrl)}"${href && /^https?:\/\//i.test(href) ? ' target="_blank" rel="noopener noreferrer"' : ""}><img class="page-card-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"></a>` : ""}<h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p>${href ? `<a class="text-link" href="${escapeHtml(href)}">Learn more <span>→</span></a>` : ""}</article>`).join("")}</div>`;
 }
 
+function formatEventDate(value) {
+  const date = String(value || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return String(value || "");
+  const [year, month, day] = date.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GH", { day: "numeric", month: "long", year: "numeric" })
+    .format(new Date(year, month - 1, day));
+}
+
+function renderEventCard(event, featured = false) {
+  const link = event.link_url || "/contact";
+  const target = /^https?:\/\//i.test(link) ? ' target="_blank" rel="noopener noreferrer"' : "";
+  const imageLink = event.link_url || event.image_url || "/contact";
+  const imageTarget = /^https?:\/\//i.test(imageLink) ? ' target="_blank" rel="noopener noreferrer"' : "";
+  const image = event.image_url
+    ? `<a class="events-card-image" href="${escapeHtml(imageLink)}"${imageTarget}><img src="${escapeHtml(event.image_url)}" alt="${escapeHtml(event.title)}" loading="lazy" decoding="async"></a>`
+    : `<div class="events-card-image events-card-placeholder" aria-hidden="true"><span>AWANA<br>EVENTS &amp; TRAINING</span></div>`;
+  const details = [formatEventDate(event.event_date), event.event_time, event.venue].filter(Boolean);
+  const summary = event.summary || event.body || "";
+
+  return `<article class="events-card${featured ? " events-card-featured" : ""}">
+    ${image}
+    <div class="events-card-copy">
+      <p class="events-card-category">${escapeHtml(event.category || "Awana Ghana")}</p>
+      <h3>${escapeHtml(event.title)}</h3>
+      ${details.length ? `<p class="events-card-details">${details.map(detail => `<span>${escapeHtml(detail)}</span>`).join("")}</p>` : ""}
+      ${summary ? `<p class="events-card-summary">${escapeHtml(summary)}</p>` : ""}
+      <a class="events-card-link" href="${escapeHtml(link)}"${target}>${event.link_url ? "View event details" : "Ask us about this event"} <span aria-hidden="true">→</span></a>
+    </div>
+  </article>`;
+}
+
+function renderEventsPage(page, events) {
+  const hero = document.getElementById("eventsHeroVisual");
+  const featuredEvent = events.find(event => event.image_url) || events[0];
+  const heroImage = featuredEvent?.image_url || "/images/awana-community-02.jpeg";
+  const heroAlt = featuredEvent?.title || "Awana Ghana community gathering";
+  hero.innerHTML = `<div class="events-hero-frame"><img src="${escapeHtml(heroImage)}" alt="${escapeHtml(heroAlt)}"><span class="events-hero-label">${featuredEvent ? "Featured gathering" : "Growing together in Ghana"}</span></div>`;
+
+  const paragraphs = (page.paragraphs || [])
+    .map(text => `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const eventCards = events.map((event, index) => renderEventCard(event, index === 0)).join("");
+  const eventSection = events.length
+    ? `<div class="events-grid">${eventCards}</div>
+       <aside class="events-contact">
+         <div><p class="events-card-category">For churches and leaders</p><h3>Planning training for your team?</h3><p>Talk with us about training, workshops and upcoming ministry gatherings.</p></div>
+         <a class="events-card-link" href="/contact">Contact our team <span aria-hidden="true">→</span></a>
+       </aside>`
+    : `<div class="events-empty">
+         <span class="events-empty-mark" aria-hidden="true">+</span>
+         <p class="events-card-category">More dates coming soon</p>
+         <h3>Let’s learn and grow together.</h3>
+         <p>Ask us about leader orientation, workshops and ministry gatherings for your church.</p>
+         <a class="button button-green" href="/contact">Ask about training <span aria-hidden="true">→</span></a>
+       </div>`;
+
+  return `<div class="events-content">
+    <div class="events-intro">
+      <div><p class="eyebrow">Come together</p><h2>${escapeHtml(page.heading || page.title)}</h2></div>
+      <div class="events-intro-copy">${paragraphs}</div>
+    </div>
+    <section class="events-listing" aria-label="Events and training">
+      <div class="events-listing-heading"><h3>${events.length ? "Events &amp; training" : "Stay connected"}</h3><span>${String(events.length).padStart(2, "0")} ${events.length === 1 ? "event" : "events"}</span></div>
+      ${eventSection}
+    </section>
+  </div>`;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -151,6 +219,7 @@ function renderNewsletterForm() {
 
 async function renderPage() {
   const slug = location.pathname.replace(/^\/+|\/+$/g, "");
+  document.body.classList.toggle("events-page", slug === "events");
   const fallback = pageData[slug];
   let page = fallback;
   let managedPageLoaded = false;
@@ -188,6 +257,11 @@ async function renderPage() {
   document.getElementById("pageIntro").textContent = page.intro || "";
   const content = document.getElementById("pageContent");
   const paragraphs = (page.paragraphs || []).map(text => `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`).join("");
+  if (slug === "events") {
+    const events = allItems.filter(item => item.type === "events");
+    content.innerHTML = renderEventsPage(page, events);
+    return;
+  }
   const managedFaqs = slug === "faqs" ? allItems.filter(item => item.type === "faqs") : [];
   const faqRows = managedFaqs.length
     ? managedFaqs.map(item => [item.title, item.summary]).map(([question, answer]) => `<details><summary>${escapeHtml(question)}</summary><p>${escapeHtml(answer)}</p></details>`).join("")
@@ -197,13 +271,6 @@ async function renderPage() {
     managedCards = allItems.filter(item => item.type === "programmes").map(item => [item.title, `${item.body} ${item.summary}`.trim(), `/programmes/${item.slug}`]);
   } else if (slug === "resources") {
     managedCards = allItems.filter(item => item.type === "resources").map(item => [item.title, item.summary, item.link_url || ""]);
-  } else if (slug === "events") {
-    managedCards = allItems.filter(item => item.type === "events").map(item => [
-      item.title,
-      [item.event_date, item.event_time, item.venue].filter(Boolean).join(" · ") + (item.summary ? ` — ${item.summary}` : ""),
-      item.link_url || "",
-      item.image_url
-    ]);
   } else if (slug === "products") {
     managedCards = allItems.filter(item => item.type === "products").map(item => [item.title, item.summary, item.link_url || ""]);
   } else if (slug === "churches") {
