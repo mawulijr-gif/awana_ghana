@@ -83,29 +83,44 @@ function renderMediaGallery(images) {
     return;
   }
 
-  gallery.querySelectorAll("figure").forEach((slot, index) => {
-    const url = images[index];
-    slot.replaceChildren();
-    if (typeof url !== "string" || !url.trim()) {
-      slot.setAttribute("aria-hidden", "true");
-      return;
+  if (images.some(url => typeof url !== "string" || !url.trim())) {
+    console.error("Invalid image URL in homepage media gallery response.");
+    return;
+  }
+  const placeholderCount = Math.max(gallery.querySelectorAll("figure").length, 16);
+  gallery.replaceChildren();
+  if (!images.length) {
+    for (let index = 0; index < placeholderCount; index += 1) {
+      const placeholder = document.createElement("figure");
+      placeholder.setAttribute("aria-hidden", "true");
+      gallery.append(placeholder);
     }
+    return;
+  }
 
+  images.forEach(url => {
+    const slot = document.createElement("figure");
     const image = document.createElement("img");
     image.src = url;
     image.alt = "Awana Clubs Ghana community photo";
     image.loading = "lazy";
     image.decoding = "async";
-    slot.removeAttribute("aria-hidden");
     slot.append(image);
+    gallery.append(slot);
   });
+}
+
+async function loadMediaGallery() {
+  const response = await fetch("/api/site/media");
+  if (!response.ok) throw new Error("Unable to load the media gallery.");
+  renderMediaGallery(await response.json());
 }
 
 async function loadManagedContent() {
   try {
     const response = await fetch("/api/site/content");
     if (!response.ok) throw new Error("Unable to load site content.");
-    const { settings, items, galleryImages } = await response.json();
+    const { settings, items } = await response.json();
     document.querySelectorAll("[data-cms-key]").forEach(element => {
       const value = settings[element.dataset.cmsKey];
       if (typeof value === "string") element.textContent = value;
@@ -128,7 +143,6 @@ async function loadManagedContent() {
       const value = settings[element.dataset.cmsHref];
       if (typeof value === "string" && (/^\//.test(value) || /^https?:\/\//i.test(value))) element.href = value;
     });
-    renderMediaGallery(galleryImages);
     const email = settings["contact.email"];
     document.querySelectorAll("[data-cms-email]").forEach(element => {
       if (email) {
@@ -382,3 +396,4 @@ async function initializeLeaderRegistration() {
 
 initializeLeaderRegistration();
 loadManagedContent();
+loadMediaGallery().catch(error => console.error(error));

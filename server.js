@@ -8,7 +8,7 @@ const multer = require("multer");
 const { createClient } = require("@supabase/supabase-js");
 const { validateRegistrationIdentification } = require("./lib/registration-identification");
 const { isValidImageUrl } = require("./lib/image-url");
-const { parseHomeGallerySelection } = require("./lib/gallery-selection");
+const { getGalleryImageFilenames } = require("./lib/gallery-images");
 const { createOneTimeToken, hashOneTimeToken, normalizeEmail } = require("./lib/leader-security");
 
 const app = express();
@@ -150,7 +150,6 @@ const defaultSettings = {
   "home.families.title": "Faith that |grows at home.",
   "home.families.description": "Discover simple ways to encourage your child's spiritual growth beyond club meetings.",
   "home.families.image": "",
-  "home.gallery.images": "[]",
   "home.contact.kicker": "Contact us",
   "home.contact.title": "Let's start a |conversation.",
   "footer.description": "Equipping churches to disciple the next generation in Ghana.",
@@ -358,6 +357,12 @@ app.get("/api/faqs", async (_req, res) => {
   const { rows } = await db.query("SELECT * FROM cms_items WHERE type = 'faqs' AND published = 1 ORDER BY sort_order, id");
   res.json(rows);
 });
+app.get("/api/site/media", async (_req, res) => {
+  const { data: files, error } = await siteAssets.list("", { limit: 1000 });
+  if (error) throw error;
+  const images = getGalleryImageFilenames(files).map(publicAssetUrl);
+  res.json(images);
+});
 app.get("/api/site/content", async (_req, res) => {
   const [settingsResult, itemsResult] = await Promise.all([
     db.query("SELECT key, value FROM site_settings"),
@@ -365,9 +370,7 @@ app.get("/api/site/content", async (_req, res) => {
   ]);
   const settings = Object.fromEntries(settingsResult.rows.map(row => [row.key, row.value]));
   const items = itemsResult.rows;
-  const galleryImages = parseHomeGallerySelection(settings["home.gallery.images"] || "[]")
-    .map(publicAssetUrl);
-  res.json({ settings, items, galleryImages });
+  res.json({ settings, items });
 });
 app.get("/api/site/page", async (req, res) => {
   const slug = String(req.query.slug || "");
@@ -1419,7 +1422,6 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
   }
   const entries = Object.entries(updates);
   if (entries.length > 100) return res.status(400).json({ error: "Too many settings in one request." });
-  let selectedGalleryImages;
   for (const [key, value] of entries) {
     if (!Object.prototype.hasOwnProperty.call(defaultSettings, key)) {
       return res.status(400).json({ error: `Unknown setting: ${key}` });
@@ -1439,21 +1441,6 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
     if (key === "contact.email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
       return res.status(400).json({ error: "Enter a valid contact email address." });
     }
-    if (key === "home.gallery.images") {
-      try {
-        selectedGalleryImages = parseHomeGallerySelection(value);
-      } catch (error) {
-        return res.status(400).json({ error: error.message });
-      }
-    }
-  }
-  if (selectedGalleryImages) {
-    const { data: mediaFiles, error } = await siteAssets.list("", { limit: 1000 });
-    if (error) throw error;
-    const availableImages = new Set(mediaFiles.filter(file => file.id).map(file => file.name));
-    if (selectedGalleryImages.some(filename => !availableImages.has(filename))) {
-      return res.status(400).json({ error: "Select images currently present in the Media library." });
-    }
   }
   await withTransaction(async client => {
     for (const [key, value] of entries) {
@@ -1468,9 +1455,8 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
 app.get("/api/admin/media", requireAdmin, async (_req, res) => {
   const { data: files, error } = await siteAssets.list("", { limit: 1000 });
   if (error) throw error;
-  const media = files
-    .filter(file => file.id && /\.(jpe?g|png|gif|webp)$/i.test(file.name))
-    .map(file => ({ filename: file.name, url: publicAssetUrl(file.name) }));
+  const media = getGalleryImageFilenames(files)
+    .map(filename => ({ filename, url: publicAssetUrl(filename) }));
   res.json(media);
 });
 
@@ -1523,16 +1509,11 @@ app.delete("/api/admin/media/:filename", requireAdmin, async (req, res) => {
   }
   const url = publicAssetUrl(filename);
   const legacyUrl = `/uploads/${filename}`;
-  const [itemUse, settingUse, gallerySetting] = await Promise.all([
+  const [itemUse, settingUse] = await Promise.all([
     db.query("SELECT id FROM cms_items WHERE image_url IN ($1, $2) OR link_url IN ($1, $2) LIMIT 1", [url, legacyUrl]),
-    db.query("SELECT key FROM site_settings WHERE value IN ($1, $2) LIMIT 1", [url, legacyUrl]),
-    db.query("SELECT value FROM site_settings WHERE key = $1", ["home.gallery.images"])
+    db.query("SELECT key FROM site_settings WHERE value IN ($1, $2) LIMIT 1", [url, legacyUrl])
   ]);
   if (itemUse.rows[0] || settingUse.rows[0]) return res.status(409).json({ error: "This image is in use. Remove it from its content before deleting it." });
-  const selectedGalleryImages = parseHomeGallerySelection(gallerySetting.rows[0]?.value || "[]");
-  if (selectedGalleryImages.includes(filename)) {
-    return res.status(409).json({ error: "Remove this image from the homepage gallery before deleting it." });
-  }
   const { data: files, error } = await siteAssets.list("", { limit: 1000, search: filename });
   if (error) throw error;
   if (!files.some(file => file.id && file.name === filename)) {
