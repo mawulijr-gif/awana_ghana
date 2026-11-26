@@ -170,7 +170,11 @@
     .cms-media-card div { padding: 9px; }
     .cms-media-card p { margin: 0 0 8px; overflow: hidden; color: var(--admin-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
     .cms-media-card button { margin-right: 5px; padding: 6px 8px; border: 1px solid var(--admin-line); border-radius: 4px; background: white; color: var(--admin-green-bright); cursor: pointer; font-size: 9px; font-weight: 800; }
-    .cms-media-card button:last-child { color: #a63e2e; }
+    .cms-media-card button:last-of-type { color: #a63e2e; }
+    .cms-gallery-panel { margin-bottom: 16px; }
+    .cms-gallery-panel .panel-header { padding: 18px 18px 0; }
+    .cms-gallery-select { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: var(--admin-muted); font-size: 10px; }
+    .cms-gallery-select input { accent-color: var(--admin-green-bright); }
     .cms-upload-panel { margin-bottom: 16px; padding: 18px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
     .cms-upload-panel strong { font-size: 12px; }
     .cms-upload-panel p { margin: 5px 0 0; color: var(--admin-muted); font-size: 10px; }
@@ -706,6 +710,7 @@
       const settings = await request("/api/admin/settings");
       const groups = new Map();
       for (const [key, value] of Object.entries(settings)) {
+        if (key === "home.gallery.images") continue;
         const groupName = key.split(".")[0];
         if (!groups.has(groupName)) groups.set(groupName, []);
         groups.get(groupName).push(settingField(key, value));
@@ -746,20 +751,77 @@
     }
 
     async function renderMedia(target) {
-      const [media, files] = await Promise.all([request("/api/admin/media"), request("/api/admin/files")]);
+      const [media, files, settings] = await Promise.all([
+        request("/api/admin/media"),
+        request("/api/admin/files"),
+        request("/api/admin/settings")
+      ]);
+      let selectedGalleryImages;
+      try {
+        selectedGalleryImages = JSON.parse(settings["home.gallery.images"] || "[]");
+      } catch {
+        throw new Error("The homepage gallery selection is invalid. Please contact support.");
+      }
+      if (!Array.isArray(selectedGalleryImages)) {
+        throw new Error("The homepage gallery selection is invalid. Please contact support.");
+      }
+      const selectedGalleryImageSet = new Set(selectedGalleryImages);
       const cards = media.map(item => `<article class="cms-media-card">
         <img src="${escapeHtml(item.url)}" alt="">
         <div><p title="${escapeHtml(item.filename)}">${escapeHtml(item.filename)}</p>
           <button type="button" onclick="copyMediaUrl('${escapeHtml(item.url)}')">Copy URL</button>
           <button type="button" onclick="deleteMedia('${escapeHtml(item.filename)}')">Delete</button>
+          <label class="cms-gallery-select"><input type="checkbox" class="gallery-image-check" value="${escapeHtml(item.filename)}" ${selectedGalleryImageSet.has(item.filename) ? "checked" : ""}>Show in homepage gallery</label>
         </div></article>`).join("");
       target.innerHTML = `<section class="cms-section">
         ${sectionHeading("Media library", "Upload and manage images and resource files used on the public website.", "")}
         <form id="mediaUploadForm" class="panel cms-upload-panel"><div><strong>Upload image</strong><p>JPG, PNG, GIF or WebP · maximum 5 MB</p></div><div class="cms-image-tools"><input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif" required><button class="cms-primary" type="submit">Upload</button></div></form>
-        <div class="panel cms-media-grid">${cards || '<p class="empty-state">No uploaded images yet.</p>'}</div>
+        <section class="panel cms-gallery-panel">
+          <header class="panel-header"><div><h2>Homepage photo gallery</h2><p>Select up to 16 uploaded images to show on the homepage. Unselected spaces stay as placeholders.</p></div></header>
+          <form id="homeGalleryForm">
+            <div class="cms-media-grid">${cards || '<p class="empty-state">Upload an image to select it for the homepage gallery.</p>'}</div>
+            <div class="cms-form-actions"><button class="cms-primary" type="submit">Save gallery selection</button><span id="homeGalleryCount" class="cms-inline-message"></span><span class="cms-inline-message" id="galleryMessage" role="status"></span></div>
+          </form>
+        </section>
         <section class="panel cms-section"><header class="panel-header"><div><h2>Resource documents</h2><p>PDF, DOC and DOCX uploads · maximum 20 MB</p></div></header><div class="table-wrap"><table><thead><tr><th>File</th><th>Public URL</th><th></th></tr></thead><tbody>${files.map(file => `<tr><td>${escapeHtml(file.filename)}</td><td>${escapeHtml(file.url)}</td><td><div class="cms-actions"><button type="button" class="delete" onclick="deleteResourceFile('${escapeHtml(file.filename)}')">Delete</button></div></td></tr>`).join("") || '<tr><td class="empty-state" colspan="3">No resource documents uploaded yet.</td></tr>'}</tbody></table></div></section>
         <p class="cms-inline-message" id="mediaMessage" role="status"></p>
       </section>`;
+      const galleryForm = target.querySelector("#homeGalleryForm");
+      const galleryMessage = target.querySelector("#galleryMessage");
+      const updateGalleryCount = () => {
+        const selectedCount = galleryForm.querySelectorAll(".gallery-image-check:checked").length;
+        target.querySelector("#homeGalleryCount").textContent = `${selectedCount}/16 selected`;
+      };
+      galleryForm.addEventListener("change", event => {
+        if (!event.target.matches(".gallery-image-check")) return;
+        if (galleryForm.querySelectorAll(".gallery-image-check:checked").length > 16) {
+          event.target.checked = false;
+          galleryMessage.textContent = "Choose up to 16 images.";
+        } else {
+          galleryMessage.textContent = "";
+        }
+        updateGalleryCount();
+      });
+      galleryForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const selected = Array.from(galleryForm.querySelectorAll(".gallery-image-check:checked"))
+          .map(input => input.value);
+        const button = galleryForm.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+          await request("/api/admin/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ "home.gallery.images": JSON.stringify(selected) })
+          });
+          galleryMessage.textContent = "Gallery saved. Refresh the public homepage to see the photos.";
+        } catch (error) {
+          galleryMessage.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+      updateGalleryCount();
       target.querySelector("#mediaUploadForm").addEventListener("submit", async event => {
         event.preventDefault();
         const form = event.currentTarget;
