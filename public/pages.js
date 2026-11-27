@@ -14,7 +14,7 @@ const pageData = {
     intro: "Age-aware club experiences that help children engage with Scripture, build relationships and grow in faith.",
     heading: "A pathway for every stage",
     paragraphs: ["Programme names and age groups below are examples from the Awana model. Please contact us to confirm which programmes are currently offered by participating churches."],
-    cards: [["Puggles · Ages 2–3", "Playful first steps with simple Bible truths and caring relationships.", "/programmes/puggles"], ["Cubbies · Ages 3–5", "Hands-on stories, songs and activities for early childhood.", "/programmes/cubbies"], ["Sparks · Kindergarten–Grade 2", "Active learning and Scripture memory for elementary-age children.", "/programmes/sparks"], ["T&T · Grades 3–6", "Bible exploration that supports growing faith and everyday life.", "/programmes/tt"], ["Trek · Grades 6–8", "Resources and guidance for middle-school discipleship."], ["Journey · Grades 9–12", "Resources and guidance for high-school discipleship."]]
+    cards: [["Puggles · Ages 2–3", "Playful first steps with simple Bible truths and caring relationships.", "/programmes/puggles"], ["Cubbies · Ages 3–5", "Hands-on stories, songs and activities for early childhood.", "/programmes/cubbies"], ["Sparks · Kindergarten–Grade 2", "Active learning and Scripture memory for elementary-age children.", "/programmes/sparks"], ["T&T · Grades 3–6", "Bible exploration that supports growing faith and everyday life.", "/programmes/tt"], ["Trek · Grades 6–8", "Resources and guidance for middle-school discipleship.", "/programmes/trek"], ["Journey · Grades 9–12", "Resources and guidance for high-school discipleship.", "/programmes/journey"]]
   },
   "programmes/puggles": {
     title: "Puggles",
@@ -43,6 +43,18 @@ const pageData = {
     heading: "Growing in faith and understanding",
     paragraphs: ["T&T encourages older elementary children to explore biblical truths and connect faith with everyday choices.", "Programme availability and age ranges vary. Contact your local participating church to learn about its current offerings."],
     cards: [["For families", "Ask the club team about meeting times, safety practices and what children should bring."]]
+  },
+  "programmes/trek": {
+    title: "Trek",
+    intro: "A programme example for middle-school students in Grades 6–8.",
+    heading: "Faith for the middle-school years",
+    paragraphs: ["Trek offers resources and guidance to help middle-school students grow in their understanding of faith and discipleship.", "Programme availability and age ranges vary. Contact your local participating church to learn about its current offerings."]
+  },
+  "programmes/journey": {
+    title: "Journey",
+    intro: "A programme example for high-school students in Grades 9–12.",
+    heading: "Faith for the high-school years",
+    paragraphs: ["Journey offers resources and guidance to help high-school students grow in their understanding of faith and discipleship.", "Programme availability and age ranges vary. Contact your local participating church to learn about its current offerings."]
   },
   "how-it-works": {
     title: "How the programme works",
@@ -233,13 +245,14 @@ async function renderPage() {
       const item = await pageResponse.json();
       managedPageLoaded = true;
       const sections = String(item.body || "").split(/\n{2,}/).map(section => section.trim()).filter(Boolean);
+      const useProgrammeFallback = item.type === "programmes" && fallback;
       page = {
         ...fallback,
         title: item.title,
-        intro: item.summary,
-        heading: sections.shift() || item.title,
-        image_url: item.image_url,
-        paragraphs: sections
+        intro: useProgrammeFallback ? fallback.intro : item.summary,
+        heading: useProgrammeFallback ? fallback.heading : sections.shift() || item.title,
+        image_url: item.image_url || (fallback && fallback.image_url),
+        paragraphs: useProgrammeFallback ? fallback.paragraphs : sections
       };
     }
     if (contentResponse.ok) allItems = (await contentResponse.json()).items || [];

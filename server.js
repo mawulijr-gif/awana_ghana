@@ -391,7 +391,8 @@ app.get("/api/site/content", async (_req, res) => {
 app.get("/api/site/page", async (req, res) => {
   const slug = String(req.query.slug || "");
   const { rows } = await db.query(`SELECT * FROM cms_items
-    WHERE type IN ('pages', 'programmes') AND slug = $1 AND published = 1
+    WHERE ((type = 'pages' AND slug = $1) OR (type = 'programmes' AND $1 = 'programmes/' || slug))
+      AND published = 1
     ORDER BY CASE type WHEN 'pages' THEN 0 ELSE 1 END LIMIT 1`, [slug]);
   const page = rows[0];
   if (!page) return res.status(404).json({ error: "Page not found." });
@@ -401,7 +402,9 @@ app.get("/api/site/page", async (req, res) => {
 app.get(/^\/(.+)$/, async (req, res, next) => {
   const slug = req.params[0];
   if (slug.startsWith("api/")) return next();
-  const { rows } = await db.query("SELECT id FROM cms_items WHERE type IN ('pages', 'programmes') AND slug = $1 AND published = 1 LIMIT 1", [slug]);
+  const { rows } = await db.query(`SELECT id FROM cms_items
+    WHERE ((type = 'pages' AND slug = $1) OR (type = 'programmes' AND $1 = 'programmes/' || slug))
+      AND published = 1 LIMIT 1`, [slug]);
   const page = rows[0];
   if (page) {
     return res.sendFile(path.join(__dirname, "public", "page.html"));
